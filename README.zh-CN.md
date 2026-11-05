@@ -125,8 +125,8 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `export=ascii,flow` | 把其中一个或两个版本存成视频 |
 | `scene=water` | 它认错照片类型时手动指定（还有 `grass`、`sky`） |
 | `amp=0.6` | 动得少一点；`amp=1.3` 动得多一点 |
-| `speed=1` | 动的速度 |
-| `sky=show` | 用蓝色标出它认为是天空的地方；`sky=off` 让天空不动 |
+| `speed=1` | 海浪的速度（水）；云的速度用 `clouds=1` |
+| `sky=show` | 用蓝色标出它认为是天空的地方；`sky=off` 不再单独处理天空（有海时天空会跟着海一起动） |
 | `shore=show` | 用红色标出它让哪些地方保持不动 |
 | `haze=0` | 地平线上不加雾 |
 

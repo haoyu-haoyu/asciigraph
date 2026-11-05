@@ -1,50 +1,74 @@
 ---
 name: asciigraph
-description: Bring a still photo to life as a seamless looping video and ASCII animation, moving each part the way it should: sea and rivers flow and waves roll ashore, clouds drift, grass and crops sway, sand and rock stay still. Exports an MP4. Use when someone asks to animate a still image, make a photo "move" or "breathe", make a cinemagraph, turn a picture into an ASCII animation or ASCII video loop, or make water, sky, grass, fur, hair, wheat or brush strokes move.
+description: Bring a still photo to life as a seamless looping video and ASCII animation, moving each part the way it should: sea and rivers flow and waves roll ashore, clouds drift, grass and crops sway, sand and rock stay still. Exports MP4, and GIF or WebP for sharing. Use when someone asks to animate a still image, make a photo "move" or "breathe", make a cinemagraph or a live/animated wallpaper, turn a picture into an ASCII animation or ASCII video loop, make an animated banner for a GitHub README or profile, or make water, sky, grass, fur, hair, wheat or brush strokes move.
 ---
 
 # asciigraph
 
-Turns one image into a seamless loop: strands that sway like a school of fish, plus an ASCII layer whose stroke glyphs follow each strand's heading. Water photos get a water scene instead (travelling swell, foam that churns, a still shore), and skies get drifting clouds. Output is an MP4 (ASCII, and optionally the scene without ASCII).
+Turns one image into a seamless loop. Water gets a travelling swell that breaks white on the shore, skies get drifting clouds and horizon haze, grass and other strand textures sway, and land stays still. Every loop comes in two versions: `ascii` (the motion drawn in stroke characters that turn with it) and `flow` (the photo itself in motion).
+
+This file is the workflow. Read these when the step calls for them:
+
+- [references/parameters.md](references/parameters.md): every URL option, scene choice, wallpaper sizes.
+- [references/sharing.md](references/sharing.md): GIF / WebP / MP4, file sizes, GitHub README and profile banners.
+- [references/internals.md](references/internals.md): solved pitfalls and where to change the look. Only needed when editing the code.
+
+## Where things are
+
+- The repo folder is this skill's folder (the one holding this file). Run every command from there.
+- The user's photo goes in `input/` (gitignored). Copy it there; don't move or edit their original. The page can only open files inside the repo folder.
+- Results land in `out/`: `out/TAG.mp4` and, next to it, the folder `out/TAG/` with every frame as `f_0000.png`… `TAG` is the image's name, then the size if cropped, the scene for water or sky, and the mode: `beach-1179x2556-water-ascii`.
+- Built-in sample: `examples/beach.png` (opened when `img` is left out).
 
 ## Workflow
 
-1. **Install once.** In the repo folder: `npm install`.
-2. **Place the image** in `input/`. Read it first and say whether it suits the effect: best are images of many fine strokes with a clear direction (grass, fur, hair, wheat, reeds, painterly brushwork, wind-swept water). Hard-edged subjects (buildings, faces, text) smear; say so before spending a render. Sea, rivers and other water use `scene=water`. Photos with a big sky over land (a city, a beach under cloud) use `scene=sky`: only the clouds drift (a city of blue glass is taken for water unless you say so). The default `scene=auto` picks grass, water or sky from the image's colours and refuses anything else; for fur, hair, paintings or other non-green strand subjects, add `scene=grass`.
-3. **Start the server** with `npm start` (port 5177; set `PORT` to change it). Run it in the background.
-4. **Preview stills** in a browser tab you control (never one the user is watching): `http://localhost:5177/?img=input/NAME&t=0.25`, plus `&mode=flow` for the scene without the ASCII layer. For water with a shore, also open `&shore=show`: the red tint is what stays still, and it should cover dry land only (if it covers water, use `&shore=off`). With a sky, open `&sky=show`: the blue tint should cover the sky only, down to the horizon or skyline (if it covers sea, sand or buildings, use `&sky=off`). Check:
-   - **Wind direction** (`wind`): default `auto` follows the texture. If strands run against the obvious flow, set degrees (0 = right, 90 = up).
-   - **Light** (`light`): set to where the light in the image comes from (130 = upper left, 45 = upper right, 270 = below).
-   - **Strand size**: strands too fat or sparse for the texture → raise `density`.
-5. **Export** with `?img=input/NAME&export=ascii,flow` (add any tuning parameters). Keep the tab in front until the title reads `done` (or `failed`; a refused image also reads `failed`, with the reason on the page). A 12 s loop at 1080 px wide takes about 10 minutes. Results: `out/NAME-ascii.mp4`, `out/NAME-flow.mp4` (water and sky scenes add `-water` or `-sky`, crops add their size before it: `NAME-1080x2340-water-ascii.mp4`).
-6. **Verify** before handing over (see Checks), then report the file paths and anything that looked weak.
-
-## Parameters (URL)
-
-`img` (default: the sample), `mode` ascii|flow, `width` (default 1080), `height` (default: follows the image; with `width` set, the image is cropped to that shape), `focus` x,y 0–1 (which part to keep when cropping, default 0.5,0.5), `scene` auto|grass|water|sky (default auto), `shore` auto|off|show (water: keep dry land still, default auto), `sky` auto|off|show (drift the clouds, default auto), `cloud` degrees (cloud drift direction, default 0 = right), `clouds` (cloud speed, default 1), `haze` (a sea seen from the shore: haze at the horizon, default 0.35), `wind` auto|degrees, `light` degrees (default 130), `amp` sway (default 1), `density` (default 1), `loop` seconds (default 12), `fps` (default 30), `t` 0–1 freeze, `export` ascii,flow.
-
-**Wallpapers.** Set `width` and `height` to the screen's native resolution (e.g. 3840×2160 desktop, 1290×2796 phone) and choose `focus` from stills. Never render small and upscale: glyphs are 5×7 px and blur. A longer `loop` adds no variety: every motion term repeats a whole number of times per loop, so it only slows the motion down.
+1. **Install once:** `npm install`.
+2. **Look at the photo first** and say whether it suits the effect, before spending a render:
+   - Good: sea, surf, rivers, lakes with a breeze, skies with clouds, grass, crops, reeds, fur, hair, painterly brushwork.
+   - Poor: hard-edged subjects (buildings, faces, text) smear; say so.
+   - The default `scene=auto` picks grass, water or sky from the colours and refuses anything else. Fur, hair, paintings or other non-green strands need `scene=grass`.
+3. **Start the server** in the background: `npm start` (port 5177; set `PORT` to change it).
+4. **Preview stills** in a browser tab you control, never one the user is watching: `http://localhost:5177/?img=input/NAME&t=0.25`. Add `&mode=flow` to see it without the ASCII. Then check what it decided:
+   - Water with a shore: open `&shore=show`. The red tint is what stays still and should cover dry land only. If it covers water, use `&shore=off`.
+   - A sky: open `&sky=show`. The blue tint should cover sky only, down to the horizon or skyline. If it covers sea, sand or buildings, use `&sky=off`. That ignores the sky entirely: over water the sky then moves with the sea, and the scene guess is made without it.
+   - Grass: wind direction (`wind`), light direction (`light`), strand size (`density`). See parameters.md.
+   - Crops (wallpapers, banners): set `width` and `height` to the final size and move the frame with `focus`.
+5. **Export:** `?img=input/NAME&export=ascii,flow` plus the tuning options. Keep that tab in front until the title reads `done` or `failed` (a refused image also reads `failed`, with the reason on the page). A background or hidden tab renders several times slower. A 12 s loop at 1080 px wide takes about 10 minutes.
+6. **Check it** (below), convert it if it's going somewhere other than a video player (sharing.md), then report the file paths and anything that looked weak.
 
 ## Checks
 
-Run these on every export:
+Run on every export. Get the bundled ffmpeg with `FF=$(node -p "require('ffmpeg-static')")`.
 
-1. **Seamless loop**: `npm run check -- out/NAME-ascii.mp4` must print `✓ seamless` (last→first change no bigger than an ordinary frame step).
-2. **Motion reads at phone size.** Scale two frames 0.5 s apart to 360 px wide and compare: PSNR should be about 25 dB or lower. If it is near 29+, motion is too subtle — raise `amp` (try 1.3–1.5). Users judge this on a phone, where small sway disappears.
-3. **Colour matches the image.** Scale the ASCII frame and the source image to ~108 px wide and compare per brightness band: ASCII/source brightness ≈ 1.0–1.1, saturation ≈ the source's. Bright pixels must not be white-washed or neon. Do not "fix" dullness by pushing exposure or stroke saturation; that is what made earlier versions look blown-out and fluorescent.
-4. **No black specks**: none should appear; if they do, a shader produced NaN (see Pitfalls).
+1. **Seamless loop:** `npm run check -- out/TAG` (the frame folder) must print `✓ seamless`.
+   - Check the folder, not the MP4. Compression makes the MP4's first frame sharper than its last, so a perfect loop can fail on the MP4. When the folder passes and the MP4 doesn't, the loop is fine.
+   - A real failure in the folder means some motion term doesn't repeat a whole number of times per loop (internals.md).
+2. **Motion reads at phone size:** compare two frames 0.5 s apart (15 frames at 30 fps), both scaled to 360 px wide:
+   `$FF -i out/TAG/f_0000.png -i out/TAG/f_0015.png -lavfi "[0]scale=360:-1[a];[1]scale=360:-1[b];[a][b]psnr" -f null - 2>&1 | grep average`
+   - About 25 dB or lower is good.
+   - Near 29 or above, the motion is too subtle. Raise `amp` (try 1.3–1.5; water stops growing at 1.4). People judge this on a phone, where small sway disappears.
+3. **Colour matches the photo:** scale an ASCII frame and the source (cropped the same way) to about 108 px wide and compare them per brightness band.
+   - ASCII brightness over source brightness should be about 1.0–1.1, and saturation about the source's.
+   - Bright parts must keep their colour, not wash out to white or go neon.
+   - Dark bands may read a little brighter in ASCII. That's expected from how cells are drawn.
+   - Don't "fix" dullness by pushing exposure or stroke saturation. That's what made earlier versions look blown out.
+4. **No black specks.** If any appear, a shader produced NaN (internals.md).
+5. **Nothing still is moving.** Watch the flow version for a few seconds: cliffs, sand, buildings and rocks should stay put, and grass on the land may sway. If something wobbles, go back to step 4 of the workflow and check `shore=show` / `sky=show`.
 
-## Pitfalls already solved — keep them solved
+## Common requests
 
-- **NaN specks.** MSAA can extrapolate varyings slightly outside 0–1; `pow()` of a negative is NaN, which mipmapping spreads into black squares. Clamp before `pow`. Guard `atan(0, 0)`.
-- **Loop seam.** Every moving term must repeat a whole number of times per loop. Noise that drifts must use the periodic `pfbm` with an integer period on the drift axis.
-- **GLSL comments** must not end in a backslash (it continues the line and swallows the next one). `half` is reserved in GLSL — don't use it as a name.
-- **Brightness by angle.** Stroke glyphs are fitted so each weight lights the same pixel count at every angle; otherwise horizontal strands read darker than diagonal ones.
-- **Highlights.** Strokes keep their cell's own saturation and only ease toward warm cream at the very top. Whitening them loses the colour; boosting their saturation looks neon.
-- **Shadows.** Shadows keep thin strokes plus a glow so they read as dark colour, not black.
+- **Phone or desktop wallpaper:**
+  - Set `width` and `height` to the screen's native resolution, e.g. 1179×2556 (iPhone 15 Pro), 1290×2796 (iPhone 15 Pro Max), 3840×2160 (4K desktop).
+  - Choose `focus` from stills, then export `flow` (and `ascii` if they want it).
+  - Never render small and upscale: glyphs are 5×7 px and blur.
+- **GitHub README or profile banner:** render at the size it will be shown, wide and short (e.g. 840×340), then convert. ASCII becomes a GIF; a plain flow loop becomes a WebP. See sharing.md for the exact commands and size budgets.
+- **"Make it calmer / livelier":** `amp` 0.6–1.5. For water, `speed` changes how fast the waves run. For skies, `clouds` sets the cloud speed and `cloud` the direction. A longer `loop` adds no variety: every motion repeats a whole number of times per loop, so it only slows things down.
+- **It guessed the scene wrong:** set `scene=water|grass|sky`. If it refuses the image, the page says what it measured. Only override when the photo really is one of them.
 
-## Changing the look
+## Known limits
 
-- Motion: `STRAND_VS` in `src/field.js` (`amp`, the `wave`/`sub`/`lean` mix, `own`).
-- Light: `sunDir`, `sunPool`, `poolTint` in `src/field.js`.
-- Glyphs and colour: `WEIGHTS` and the colour solve in `src/ascii.js`; the dot ramp in `src/font5x7.js`.
+Say so up front when a photo hits one of these:
+
+- It reads water, land and sky from colour and texture alone. A white or pale building against a pale sky, snow, or a city of blue glass can be misread.
+- A sunset's orange band stays with what is below it.
+- Very thin objects (a pier, a boat, a mast) are below the mask's resolution and may move with the water.

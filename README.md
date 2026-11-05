@@ -125,8 +125,8 @@ Everything goes in the URL.
 | `export=ascii,flow` | save one or both versions as video |
 | `scene=water` | override the guess when it's wrong (also `grass`, `sky`) |
 | `amp=0.6` | less motion; `amp=1.3` for more |
-| `speed=1` | how fast it moves |
-| `sky=show` | tint what it thinks is sky in blue; `sky=off` to keep the sky still |
+| `speed=1` | how fast the waves run (water); for clouds, `clouds=1` |
+| `sky=show` | tint what it thinks is sky in blue; `sky=off` to ignore it (over water it then moves with the sea) |
 | `shore=show` | tint what it's keeping still in red |
 | `haze=0` | no haze on the horizon |
 
