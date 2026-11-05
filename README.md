@@ -1,64 +1,168 @@
 <p align="right"><b>English</b> · <a href="./README.zh-CN.md">中文</a></p>
 
-<p align="center"><img src="./assets/readme/banner.gif" width="100%" alt="ASCII waves on a beach"></p>
+<p align="center"><img src="./assets/readme/banner.gif" width="100%" alt="Waves washing up a sandy beach, drawn in ASCII characters"></p>
 
-# asciigraph
+<h1 align="center">asciigraph</h1>
 
-Takes a single photo and makes it move. The sea keeps rolling in, clouds drift, grass sways, and the sand and rocks stay where they are. You can export it as a normal video or as ASCII art, and both loop cleanly.
+<p align="center">Give it one photo. Get back a short loop where the sea rolls in, clouds drift and grass sways,<br>drawn as a normal video or as moving ASCII.</p>
 
-The banner above is one beach photo run through it.
+<p align="center">
+  <img src="https://img.shields.io/badge/node-%E2%89%A518-0b1519?style=flat-square&labelColor=0b1519&color=e2c48c" alt="Node 18 or newer">
+  <img src="https://img.shields.io/badge/runs%20in-the%20browser-0b1519?style=flat-square&labelColor=0b1519&color=5f9e98" alt="Runs in the browser">
+  <img src="https://img.shields.io/badge/license-MIT-0b1519?style=flat-square&labelColor=0b1519&color=8fa9a6" alt="MIT license">
+</p>
 
-## Running it
+<br>
 
-You need Node.js 18+.
+<img src="./assets/readme/en/section-what.svg" width="100%" alt="01 What it does">
+
+You pick a photo. asciigraph works out which parts should move and how, and renders a loop that you can play forever without seeing where it starts again. The banner at the top is a single beach photo.
+
+- **Water** moves like water: waves come in from the open sea toward the shore, get smaller toward the horizon, and break white where they hit rock or sand.
+- **Sky** drifts. Clouds slide slowly sideways and the far sea fades into haze.
+- **Grass and fields** sway with the wind, one strand at a time.
+- **Everything else stays put.** Cliffs, sand, buildings and rocks don't wobble along with the water.
+
+You get two versions of every loop: `flow`, the photo itself in motion, and `ascii`, the same motion drawn in characters that turn with whatever is moving under them.
+
+<br>
+
+<img src="./assets/readme/en/section-how.svg" width="100%" alt="02 How it reads a photo">
+
+<p align="center"><img src="./assets/readme/en/regions.webp" width="100%" alt="The photo, what asciigraph sees in it (sky in blue, still land in red), the moving version, and the ASCII version"></p>
+
+1. **It finds the sky.** Sky hangs from the top edge, is smooth, and stops at the horizon, so that's what it looks for.
+2. **It finds the land.** Anything connected to sand, rock or a cliff is kept still. Grass on that land is allowed to sway.
+3. **What's left is water.** It reads which way the photo's own waves already run and keeps them going in that direction, in perspective, so far waves are smaller and slower than near ones.
+4. **Then it draws.** Each character's shape and angle comes from the motion right under it, which is why the ASCII looks like it's flowing instead of flickering.
+
+<br>
+
+<img src="./assets/readme/en/section-gallery.svg" width="100%" alt="03 Gallery">
+
+<table>
+  <tr>
+    <td width="33%"><img src="./assets/readme/gallery/coast.gif" width="100%" alt="A grassy cliff over the sea, in ASCII"></td>
+    <td width="33%"><img src="./assets/readme/gallery/rice.gif" width="100%" alt="A golden rice field in the wind, in ASCII"></td>
+    <td width="33%"><img src="./assets/readme/gallery/clouds.gif" width="100%" alt="A sky full of clouds, in ASCII"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Coast</b><br><sub>waves roll in, the cliff stays still</sub></td>
+    <td align="center"><b>Rice field</b><br><sub>the whole field bends in the wind</sub></td>
+    <td align="center"><b>Clouds</b><br><sub>nothing but sky, drifting</sub></td>
+  </tr>
+</table>
+
+<p align="center"><sub>And the same thing without the ASCII, as a phone wallpaper (<code>mode=flow</code>):</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/readme/gallery/bay.webp" width="100%" alt="A curved bay from above, palm shadows on the sand, waves washing in"></td>
+    <td width="50%"><img src="./assets/readme/gallery/surf.webp" width="100%" alt="Surf running up a sandy beach, seen from above"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Bay</b><br><sub>the waves follow the curve of the shore</sub></td>
+    <td align="center"><b>Surf</b><br><sub>foam runs up the sand and slides back</sub></td>
+  </tr>
+</table>
+
+<br>
+
+<img src="./assets/readme/en/section-start.svg" width="100%" alt="04 Get started">
+
+### Option 1: run it yourself
+
+You need Node.js 18 or newer.
 
 ```bash
+git clone https://github.com/haoyu-haoyu/asciigraph.git
+cd asciigraph
 npm install
 npm start
 ```
 
-Open http://localhost:5177. To try your own photo, drop it into `input/` and go to
+Open http://localhost:5177 and you'll see the beach example. To use your own photo, put it in `input/` and open:
 
 ```
-http://localhost:5177/?img=input/beach.jpg
+http://localhost:5177/?img=input/your-photo.jpg
 ```
 
-Add `&export=ascii,flow` to the end to save the videos. Leave the tab open until it says `done`; the files go to `out/`.
+To save the videos, add `&export=ascii,flow` to the end. Keep the tab open until it says `done`; the files land in `out/`.
 
-## Example: a phone wallpaper
+### Option 2: let Claude Code do it
 
-Say you have a beach photo and want it on your phone.
+The repo includes a `SKILL.md`. Put the repo where Claude Code looks for skills:
 
-1. Put it in `input/` and open `http://localhost:5177/?img=input/beach.jpg`. It figures out the water, sand and sky by itself.
-2. Crop it to your screen: add `&width=1179&height=2556` (an iPhone 15 Pro). If the wrong part of the photo ends up in frame, move it with `&focus=0.5,0.3` (across, down, both 0 to 1).
-3. Add `&shore=show` once. The sand should turn red and the sea shouldn't. Remove it again when it looks right.
-4. Add `&export=ascii,flow` and wait for `done`. The two videos are in `out/`.
+```bash
+git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigraph
+```
 
-## Options
+Then just ask, for example: *"Make this beach photo into a phone wallpaper loop."* It runs everything above, checks that the right parts are moving, and fixes the settings if they aren't.
 
-They all go in the URL.
+<details>
+<summary><b>Walkthrough: a phone wallpaper</b></summary>
+<br>
 
-| | |
+1. Put the photo in `input/` and open `http://localhost:5177/?img=input/beach.jpg`. It sorts out water, sand and sky by itself.
+2. Crop it to your screen with `&width=1179&height=2556` (that's an iPhone 15 Pro). If the wrong part ends up in frame, move it with `&focus=0.5,0.3`: across, then down, both from 0 to 1.
+3. Add `&shore=show` once. The sand should turn red and the sea shouldn't. Take it off again when it looks right.
+4. Add `&export=ascii,flow` and wait for `done`. Both videos are in `out/`.
+
+</details>
+
+<details>
+<summary><b>All options</b></summary>
+<br>
+
+Everything goes in the URL.
+
+| Option | What it does |
 |---|---|
-| `width=1080&height=2340` | output size (your screen size, if it's a wallpaper) |
-| `mode=flow` | plain video, no ASCII |
-| `scene=water` | use this when it guesses the photo wrong (also `grass`, `sky`) |
-| `shore=show` | shows in red what it's keeping still |
-| `sky=show` | shows in blue what it thinks is sky |
+| `img=input/photo.jpg` | the photo to use |
+| `width=1080&height=2340` | output size; for a wallpaper, your screen size |
+| `focus=0.5,0.3` | which part of the photo to keep when cropping |
+| `mode=flow` | start in the plain view instead of ASCII |
+| `export=ascii,flow` | save one or both versions as video |
+| `scene=water` | override the guess when it's wrong (also `grass`, `sky`) |
+| `amp=0.6` | less motion; `amp=1.3` for more |
+| `speed=1` | how fast it moves |
+| `sky=show` | tint what it thinks is sky in blue; `sky=off` to keep the sky still |
+| `shore=show` | tint what it's keeping still in red |
+| `haze=0` | no haze on the horizon |
 
-`M` switches between ASCII and the plain view, space pauses.
+In the page, `M` switches between ASCII and the plain view, and space pauses.
 
-## When it looks wrong
+</details>
 
-- Something moves that shouldn't: check with `shore=show`, then set `scene=` yourself.
-- The sky or clouds look off: check with `sky=show`, or switch it off with `sky=off`.
-- Too much or too little motion: `amp=0.6` calms it down, `amp=1.3` makes it livelier.
+<details>
+<summary><b>When it looks wrong</b></summary>
+<br>
 
-If you use Claude Code, there's a `SKILL.md` in the repo. Hand it a photo and it can do all of the above for you, checks included.
+- **Something moves that shouldn't.** Look with `shore=show`, then set `scene=` yourself.
+- **The sky looks off.** Look with `sky=show`, or turn it off with `sky=off`.
+- **Too calm or too busy.** Try `amp=0.6` or `amp=1.3`.
 
-## Limits
+It tells water, land and sky apart by colour and texture alone. That's fine for most sea and beach photos. It can get a white building against a pale sky, or blue glass towers, wrong.
 
-It decides what's water, sand or sky from colour alone. That works for most beach and sea photos, but it can get a white building against a pale sky, or blue glass towers, wrong. If something moves that shouldn't, check with `shore=show` / `sky=show` and set `scene=` yourself.
+</details>
+
+<details>
+<summary><b>What's in the repo</b></summary>
+<br>
+
+| Path | |
+|---|---|
+| `src/sky.js` | finds the sky and the horizon |
+| `src/shore.js` | finds the land to keep still, and the grass on it |
+| `src/water.js` | the water, the waves breaking and the drifting clouds |
+| `src/field.js` | the swaying strands for grass and fields |
+| `src/post.js` | turns a frame into ASCII |
+| `server.mjs` | the local server; also writes the exported videos |
+| `npm run check` | checks that an exported loop has no visible jump |
+
+</details>
+
+<br>
 
 ## License
 
