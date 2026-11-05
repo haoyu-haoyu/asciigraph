@@ -64,8 +64,8 @@ const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
 | `speed` | 1 | water | how fast the waves run |
 | `wavelength` | from the photo | water | wave size in frame heights, when the photo's own reads wrong |
 | `churn` | from the photo | water | how much the surface churns in place (surf) versus drifting (a river) |
-| `drift` | from the photo | water | how far the surface texture drifts |
-| `cycles` | 6 | water | whole drift cycles per loop; more means shorter, busier drift |
+| `drift` | from the photo | water | how fast the surface texture drifts |
+| `cycles` | 18 (6 for a sea seen from the shore) | water | whole drift cycles per loop, at the same speed: more keeps the water sharper, fewer restart the drift less often. Lower it if the surface seems to shimmer |
 | `cloud` | 0 | any scene with a sky | cloud drift direction in degrees (0 = right) |
 | `clouds` | 1 | any scene with a sky | cloud speed; the one speed control in a sky scene |
 | `haze` | 0.35 | water with a sea horizon | haze where the sea meets the sky; `0` for none |

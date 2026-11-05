@@ -30,7 +30,7 @@
 //                      clear swell, its axis), and points it rightward or up;
 //                      beside a shore it found, the swell comes ashore instead
 //   churn=auto|1       water: how much the foam boils in place
-//   drift=auto|0.5     water: how far the surface drifts per flow cycle
+//   drift=auto|0.5     water: how fast the surface drifts (per sixth of a loop)
 //                      (auto: streaky photos drift more, chaotic ones churn more)
 //   wavelength=auto    water: typical swell size in frame heights (the
 //                      slope-weighted mean; the longest wave is ~2.5× that).
@@ -52,7 +52,10 @@
 //                      hand-painted overrides, the shape of the uncropped image:
 //                      red keeps a part still (no swell, cloud or sway), green
 //                      lets it move as water. Paint them in the page with E
-//   cycles=6           water: flow cycles per loop (whole number)
+//   cycles=auto|18     water: drift cycles per loop (whole number). More, shorter
+//                      cycles keep the drifting copies closer and the foam sharper
+//                      at the same speed; fewer show the restarts less. auto: 18,
+//                      or 6 for a sea seen from the shore
 //   speed=1            water: swell speed multiplier (each wave is rounded to
 //                      whole cycles per loop, at least one, so very low
 //                      speeds stop slowing down)
@@ -171,7 +174,7 @@ const common = { image, maps, width: W, height: H, wind, light: rad(num('light',
 const field = flowing
   ? buildWater(renderer, {
       ...common, windGiven, stats: analyseWater(image, sky), churn: num('churn', null), drift: num('drift', null),
-      wavelength: num('wavelength', null), cycles: num('cycles', 6), speed: num('speed', 1), shore: q.get('shore')?.trim().toLowerCase(),
+      wavelength: num('wavelength', null), cycles: num('cycles', null), speed: num('speed', 1), shore: q.get('shore')?.trim().toLowerCase(),
       grid, sky, skyOnly: scene === 'sky', skyShow: skyMode === 'show', cloud: rad(num('cloud', 0)), clouds: num('clouds', 1), haze: num('haze', null), marks, foundSky,
     })
   : buildField(renderer, { ...common, density: num('density', 1), marks, grid });

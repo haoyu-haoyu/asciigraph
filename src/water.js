@@ -457,6 +457,11 @@ export function buildWater(renderer, opts) {
   // horizon toward the camera and lean toward the shore; directions here are
   // on that plane (x across, y away from the camera).
   const persp = !opts.skyOnly && found?.seaLine != null;
+  // drift cycles per loop, whole (or the loop won't close): many short ones
+  // keep the drifting copies close and the water sharp (see uDrift). A sea
+  // seen from the shore keeps fewer: its look comes mostly from the photo's
+  // own waves rolling in, and restarting them more often only adds flicker
+  const cycles = Math.max(1, Math.round(opts.cycles ?? (persp ? 6 : 18)));
   const onshore = opts.windGiven ? null : shore?.onshore ?? null;
   const swellRef = persp && !opts.windGiven
     ? Math.atan2((onshore != null ? Math.sin(onshore) : 0) - 0.6, onshore != null ? Math.cos(onshore) : 0)
@@ -485,7 +490,9 @@ export function buildWater(renderer, opts) {
   // and almost never happens; the full amount would crop ~10% of the photo
   // (no water: nothing is displaced but the clouds, which mirror at the edges)
   // (in perspective the crests also rise, by up to 0.6 of the swell's height)
-  const inset = opts.skyOnly ? 0 : 0.6 * (hmax * ampEff * (persp ? 1.6 : 1) + (0.011 * churn) / scale + 0.65 * 0.03 * drift + 0.004) + (persp ? 0.007 : 0);
+  // (the drift and the photo's waves rolling in both travel per cycle: see uDrift)
+  const perCycle = 6 / cycles, driftStep = 0.03 * drift * perCycle;
+  const inset = opts.skyOnly ? 0 : 0.6 * (hmax * ampEff * (persp ? 1.6 : 1) + (0.011 * churn) / scale + 0.65 * driftStep + 0.004) + (persp ? 0.007 * perCycle : 0);
   // clouds: a short drift per cycle, so the two copies never show a double edge
   const cloud = opts.cloud ?? 0, cloudSpeed = Math.max(0, opts.clouds ?? 1);
   const uniforms = {
@@ -498,8 +505,11 @@ export function buildWater(renderer, opts) {
     // mip of the photo that is ~4 output pixels across, for spotting glints
     uLod: { value: Math.max(0, Math.log2(opts.image.width / W) + 2) },
     // short drift per cycle and many cycles: the copies stay close, so the
-    // cross-fade never shows a double image
-    uDrift: { value: 0.03 * drift }, uCycles: { value: Math.max(1, Math.round(opts.cycles)) },
+    // cross-fade never shows a double image. Three copies a third of a cycle
+    // apart sit drift/3 apart, and averaging them blurs the foam by that
+    // much, so more cycles, each shorter, keep it sharp at the same speed:
+    // the drift per cycle is the speed (per sixth of a loop) over cycles/6
+    uDrift: { value: driftStep }, uCycles: { value: cycles },
     uWave: { value: waves }, uSteep: { value: WAVE_SET.map((w) => w[2]) },
     // no sky: none of it (r) and all of the water's motion (g)
     tSky: { value: sky ? sky.tex : maskTexture(1, 1, [0], [1]) },
@@ -510,7 +520,7 @@ export function buildWater(renderer, opts) {
     uPersp: { value: persp ? 1 : 0 }, uSeaLine: { value: persp ? found.seaLine : 1 },
     uHeading: { value: new THREE.Vector2(Math.cos(heading), Math.sin(heading)) },
     // (a run per cycle short enough that the drifting copies don't show a double crest)
-    uWaveRun: { value: persp ? 0.06 * Math.min(opts.amp, 1.4) : 0 }, uSwellK: { value: persp ? 0.35 : 1 },
+    uWaveRun: { value: persp ? 0.06 * Math.min(opts.amp, 1.4) * perCycle : 0 }, uSwellK: { value: persp ? 0.35 : 1 },
     // (two surges a loop: one every six seconds at the default 12 s, about a real set's pace)
     uSurge: { value: persp ? 2 : 0 }, uHaze: { value: persp ? Math.min(1, Math.max(0, opts.haze ?? 0.35)) : 0 },
     uShoreTexel: { value: new THREE.Vector2(1 / still.image.width, 1 / still.image.height) },
