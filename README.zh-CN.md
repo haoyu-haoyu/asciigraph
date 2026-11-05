@@ -25,6 +25,15 @@ http://localhost:5177/?img=input/beach.jpg
 
 网址后面加 `&export=ascii,flow` 就会导出视频。页面别关，等它显示 `done`，文件在 `out/` 里。
 
+## 举个例子：做一张手机壁纸
+
+假设你有一张海滩照片，想放到手机上。
+
+1. 把照片放进 `input/`，打开 `http://localhost:5177/?img=input/beach.jpg`。水、沙滩、天空它会自己分出来。
+2. 按屏幕裁剪：加上 `&width=1179&height=2556`（iPhone 15 Pro 的分辨率）。如果画面里框到的不是你想要的部分，用 `&focus=0.5,0.3` 挪一下（分别是左右、上下，都在 0 到 1 之间）。
+3. 加一次 `&shore=show`：沙滩应该变红，海不应该变红。没问题就去掉。
+4. 加上 `&export=ascii,flow`，等它显示 `done`，两段视频就在 `out/` 里了。
+
 ## 参数
 
 都写在网址里。
@@ -38,6 +47,14 @@ http://localhost:5177/?img=input/beach.jpg
 | `sky=show` | 用蓝色标出它认为哪里是天空 |
 
 按 `M` 切换 ASCII 和普通画面，空格暂停。
+
+## 效果不对怎么办
+
+- 不该动的地方动了：先用 `shore=show` 看一下，再用 `scene=` 手动指定。
+- 天空或云不对：用 `sky=show` 看一下，或者用 `sky=off` 关掉。
+- 动得太多或太少：`amp=0.6` 会平静一些，`amp=1.3` 会更活泼。
+
+如果你用 Claude Code，仓库里有一份 `SKILL.md`。把照片交给它，上面这些步骤和检查它都能替你做。
 
 ## 局限
 
