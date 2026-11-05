@@ -17,13 +17,18 @@
 //   fps=30             export frame rate
 //   t=0.25             freeze at a loop phase (for stills)
 //   export=ascii,flow  render one loop of each listed mode and encode MP4s
-//   scene=auto|grass|water|sky
+//   scene=auto|grass|water|sky|waterfall|steam
 //                      grass rebuilds the image from swaying strands; water
 //                      carries it along a flow field under travelling swell
 //                      (sea, rivers, anything that flows rather than sways);
 //                      sky drifts the clouds and keeps all below them still.
 //                      auto (default) picks one from the photo's colours and,
 //                      if it looks like none of them, renders nothing and says so.
+//                      waterfall and steam (steam covers smoke and mist too) move only what
+//                      runs in streaks down (or up) the frame, lighter than
+//                      around it, along those streaks, and below a waterfall
+//                      the pool or river it lands in; the rest stays still.
+//                      auto never picks them: ask for them by name
 //                      A water scene with a sky above it drifts that sky too.
 //                      In water, set wind= to the way the water moves when it
 //                      matters: auto only knows the streaks' axis (or, for a
@@ -56,7 +61,8 @@
 //                      cycles keep the drifting copies closer and the foam sharper
 //                      at the same speed; fewer show the restarts less. auto: 18,
 //                      or 6 for a sea seen from the shore
-//   speed=1            water: swell speed multiplier (each wave is rounded to
+//   speed=1            waterfall, steam: how fast it falls or rises
+//                      water: swell speed multiplier (each wave is rounded to
 //                      whole cycles per loop, at least one, so very low
 //                      speeds stop slowing down)
 // Keys: M switches mode, Space pauses, E paints marks (editor.js).
@@ -64,6 +70,7 @@ import * as THREE from 'three';
 import { loadImage, deriveMaps } from './maps.js';
 import { buildField } from './field.js';
 import { buildWater } from './water.js';
+import { buildPour } from './pour.js';
 import { analyseWater } from './waterstats.js';
 import { classifyImage } from './classify.js';
 import { readGrid } from './masks.js';
@@ -141,7 +148,8 @@ const marks = marksImg ? marksOnGrid(cropTo(marksImg, crop), grid) : null;
 // the scene is judged on the sky as found; the marks only change what moves
 const foundSky = skyMode === 'off' ? null : skyMask(grid);
 const sky = marks && foundSky ? skyMask(grid, marks) : foundSky;
-const asked = ['grass', 'water', 'sky'].includes(q.get('scene')) ? q.get('scene') : null;
+const asked = ['grass', 'water', 'sky', 'waterfall', 'steam'].includes(q.get('scene')) ? q.get('scene') : null;
+const pours = asked === 'waterfall' || asked === 'steam';   // they read their own field (pour.js)
 const guess = asked ? null : classifyImage(image);
 let scene = asked ?? guess.kind;
 if (!asked && scene !== 'grass' && foundSky) {
@@ -155,11 +163,12 @@ if (!scene) {
     ? (skyMode === 'off' ? `scene=sky needs the sky: drop <code>sky=off</code>.`
       : `No sky found at the top of this image (it needs sky along most of the top edge), so nothing was generated.`)
     : `This doesn't look like grass, water or sky (green ${pct(guess.shares.grass)}, water ${pct(guess.shares.water)} of the frame), so nothing was generated. `
-      + `If it is one of them, open it with <code>&scene=grass</code>, <code>&scene=water</code> or <code>&scene=sky</code>.`;
+      + `If it is one of them, open it with <code>&scene=grass</code>, <code>&scene=water</code> or <code>&scene=sky</code>`
+      + ` (a waterfall: <code>&scene=waterfall</code>; steam or smoke: <code>&scene=steam</code>).`;
   document.title = 'failed';   // what an export waits for
   throw new Error(`unsupported image: ${imgPath}`);
 }
-const flowing = scene !== 'grass';   // water and sky both run on the water shader
+const flowing = scene !== 'grass';   // water and sky run on the water shader, waterfalls and steam on their own
 const LOOP = num('loop', 12), FPS = num('fps', 30);
 const NAME = imgPath.split('/').pop().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-') + (cropped ? `-${W}x${H}` : '') + (flowing ? `-${scene}` : '');
 const MODES = ['ascii', 'flow'];
@@ -171,7 +180,10 @@ renderer.setPixelRatio(1);
 renderer.setSize(W, H, false);
 
 const common = { image, maps, width: W, height: H, wind, light: rad(num('light', 130)), amp: num('amp', 1) };
-const field = flowing
+const field = pours
+  ? buildPour(renderer, { ...common, kind: scene, speed: num('speed', 1), cycles: num('cycles', null), loop: LOOP,
+      marksImg: marksImg ? cropTo(marksImg, crop) : null, show: q.get('shore')?.trim().toLowerCase() === 'show' })
+  : flowing
   ? buildWater(renderer, {
       ...common, windGiven, stats: analyseWater(image, sky), churn: num('churn', null), drift: num('drift', null),
       wavelength: num('wavelength', null), cycles: num('cycles', null), speed: num('speed', 1), shore: q.get('shore')?.trim().toLowerCase(),

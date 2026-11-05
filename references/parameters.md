@@ -20,8 +20,8 @@ Everything goes in the page's URL: `http://localhost:5177/?img=input/NAME&option
 
 | Option | Default | What it does |
 |---|---|---|
-| `scene` | `auto` | `grass`, `water` or `sky`. `auto` picks one from the colours and refuses anything that is none of them |
-| `shore` | `auto` | water: keep dry land still. `off` makes it all water; `show` tints the still part red |
+| `scene` | `auto` | `grass`, `water`, `sky`, `waterfall` or `steam` (use `steam` for smoke and rising mist too). `auto` picks grass, water or sky from the colours and refuses anything that is none of them; it never picks `waterfall` or `steam`, so ask for those by name |
+| `shore` | `auto` | water: keep dry land still. `off` makes it all water; `show` tints the still part red (in `waterfall` and `steam` too) |
 | `marks` | — | a PNG of hand-painted corrections (see below). `E` in the page paints one and adds it for you |
 | `sky` | `auto` | drift the clouds. `show` tints what it reads as sky blue. `off` ignores the sky altogether: in a water scene it then moves with the water, and a sky scene can't run without it (`scene=sky&sky=off` is refused) |
 
@@ -32,12 +32,14 @@ How `auto` decides:
 - With no sky (or `sky=off`), the colour guess alone decides: water, grass, or refused.
 - A sky photo with no water keeps everything under the sky still.
 
+What `waterfall` and `steam` move: only what runs in streaks down the frame (a waterfall) or up it (steam), is lighter than what is around it and isn't strongly coloured. It moves along those streaks; everything else stays still. Below a waterfall, the water it lands in moves too: a pool or the river it feeds, found from the fall's foot outward through what is coloured like water and not like rock. It drifts away from the foot, with rings of ripples spreading out and a little churn; rocks in it stay still. Open `shore=show` to check: only the falling water, the plume or the pool should be untinted. A highlight that runs up the side of a cup can read as steam: paint it red. `wind` and `shore=off` do nothing in these two scenes.
+
 ## Marks
 
 A marks file overrides what the masks found, wherever it is painted:
 
 - **Red** (255, 0, 0): keep this still. No swell, no cloud drift, no grass sway, and on grass the light is held too.
-- **Green** (0, 255, 0): this is water; let it move, even if it was read as land or sky. Water and sky scenes only: a grass scene already moves everywhere, so it ignores green.
+- **Green** (0, 255, 0): this is water; let it move, even if it was read as land or sky. In `waterfall` and `steam`, green is more of the fall or the plume, moving the way the streaks around it run. A grass scene already moves everywhere, so it ignores green.
 - **Transparent:** leave it to the masks. Alpha is how strongly a mark applies, so soft edges blend.
 
 The file has the shape of the whole, uncropped photo (any resolution), so it still fits after `width`, `height` or `focus` change. The scene guess ignores the marks: they only change what moves.
@@ -57,15 +59,15 @@ const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
 
 | Option | Default | Applies to | What it does |
 |---|---|---|---|
-| `amp` | 1 | all | how far things move. 0.6 is calm, 1.3–1.5 lively (water stops growing at 1.4) |
-| `wind` | auto | all | direction in degrees (0 = right, 90 = up). Grass: the way strands lean. Water: overrides the wave heading it reads from the photo |
+| `amp` | 1 | all | how far things move. 0.6 is calm, 1.3–1.5 lively (water stops growing at 1.4). Waterfall and steam: how much the strands sway sideways and the pool churns; `speed` sets how fast they run |
+| `wind` | auto | grass, water | direction in degrees (0 = right, 90 = up). Grass: the way strands lean. Water: overrides the wave heading it reads from the photo |
 | `light` | 130 | all | where the light comes from, in degrees (130 = upper left, 45 = upper right, 270 = below) |
 | `density` | 1 | grass | strand density; raise it when strands look fat or sparse for the texture |
-| `speed` | 1 | water | how fast the waves run |
+| `speed` | 1 | water, waterfall, steam | water: how fast the waves run. Waterfall and steam: how fast it falls or rises, and the pool's drift and ripples |
 | `wavelength` | from the photo | water | wave size in frame heights, when the photo's own reads wrong |
 | `churn` | from the photo | water | how much the surface churns in place (surf) versus drifting (a river) |
 | `drift` | from the photo | water | how fast the surface texture drifts |
-| `cycles` | 18 (6 for a sea seen from the shore) | water | whole drift cycles per loop, at the same speed: more keeps the water sharper, fewer restart the drift less often. Lower it if the surface seems to shimmer |
+| `cycles` | 18 (6 for a sea seen from the shore; 36 for a waterfall, 12 for steam, per 12 s) | water, waterfall, steam | whole drift cycles per loop, at the same speed: more keeps the water sharper, fewer restart the drift less often. Lower it if the surface seems to shimmer |
 | `cloud` | 0 | any scene with a sky | cloud drift direction in degrees (0 = right) |
 | `clouds` | 1 | any scene with a sky | cloud speed; the one speed control in a sky scene |
 | `haze` | 0.35 | water with a sea horizon | haze where the sea meets the sky; `0` for none |

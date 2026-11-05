@@ -34,6 +34,19 @@ Each part moves the way it does in the real world, at its own pace, and nothing 
 | Shallow clear water over sand | ripples drift; the sand under it stays put | the sea floor swims | lower `amp`. If it's dry sand beside the water that swims, paint it red |
 | Any water | moves smoothly | sparkle flickers hard, or fine detail far off shimmers | lower `amp` (0.7). If the far sea still flickers, it's a limit: say so |
 
+## Waterfalls and steam
+
+Ask for these with `scene=waterfall` or `scene=steam`; auto never picks them. Check `shore=show` first: only the falling water or the plume should be untinted.
+
+| Part | Should | Looks wrong when | Fix |
+|---|---|---|---|
+| Falling water | runs down its own streaks, fast; each streak at a slightly different pace | it slides down as one sheet, or the rock behind it moves | `speed` (0.7 calmer, 1.4 a torrent). If rock moves, it was read as water: paint it red |
+| The lip of the fall | the rock it pours over stays put; the water starts there | rock is dragged down into the water | report it with a still: the copies should read the still photo there |
+| Mist at the foot | billows out from where the water lands | it stops in mid-air, or the cliff beside it drifts | paint what should move green, what shouldn't red |
+| Pool or river below the fall | drifts away from the foot, rings of ripples spreading out from it; rocks in it stay put | it lies still, or a pale rock drifts with it | `shore=show`: the pool should be untinted, its rocks red. Paint missed water green, a drifting rock red. `speed` sets how fast it runs |
+| Steam, smoke | rises slowly along its own curls, swaying a little | it races, or holds still | `speed` (0.6 slower), `amp` for more sway |
+| Cup, chimney, anything lit behind the steam | stays still | a highlight on it rises like steam | paint it red |
+
 ## Sky
 
 | Part | Should | Looks wrong when | Fix |
