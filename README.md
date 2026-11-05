@@ -66,6 +66,19 @@ You get two versions of every loop: `flow`, the photo itself in motion, and `asc
   </tr>
 </table>
 
+<p align="center"><sub>Waterfalls and steam, which it moves along their own streaks (<code>scene=waterfall</code>, <code>scene=steam</code>):</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/readme/gallery/waterfall.webp" width="100%" alt="A tall waterfall in a fern forest pouring into a pool, ripples spreading out"></td>
+    <td width="50%"><img src="./assets/readme/gallery/steam.webp" width="100%" alt="Steam curling up from a cup of tea"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Waterfall</b><br><sub>the water falls, the pool ripples out, the cliff stays</sub></td>
+    <td align="center"><b>Steam</b><br><sub>it rises along its own curls</sub></td>
+  </tr>
+</table>
+
 <br>
 
 <img src="./assets/readme/en/section-start.svg" width="100%" alt="04 Get started">

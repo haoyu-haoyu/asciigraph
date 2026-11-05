@@ -66,6 +66,19 @@
   </tr>
 </table>
 
+<p align="center"><sub>瀑布和蒸汽，沿着它们自己的纹理动（<code>scene=waterfall</code>、<code>scene=steam</code>）：</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/readme/gallery/waterfall.webp" width="100%" alt="蕨类森林里的细长瀑布落进水池，波纹向外扩散"></td>
+    <td width="50%"><img src="./assets/readme/gallery/steam.webp" width="100%" alt="一杯热茶上升起的蒸汽"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>瀑布</b><br><sub>水往下落，水池的波纹向外扩散，石壁不动</sub></td>
+    <td align="center"><b>蒸汽</b><br><sub>顺着自己的弯曲往上升</sub></td>
+  </tr>
+</table>
+
 <br>
 
 <img src="./assets/readme/zh/section-start.svg" width="100%" alt="04 开始使用">
