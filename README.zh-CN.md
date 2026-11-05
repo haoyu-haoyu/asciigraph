@@ -105,7 +105,7 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 
 1. 把照片放进 `input/`，打开 `http://localhost:5177/?img=input/beach.jpg`。水、沙滩、天空它会自己分出来。
 2. 按屏幕裁剪：加上 `&width=1179&height=2556`（iPhone 15 Pro 的分辨率）。如果框到的不是你想要的部分，用 `&focus=0.5,0.3` 挪一下，前一个是左右，后一个是上下，都在 0 到 1 之间。
-3. 加一次 `&shore=show`：沙滩应该变红，海不应该变红。没问题就去掉。
+3. 加一次 `&shore=show`：沙滩应该变红，海不应该变红。如果漏掉了礁石或者认错了，按 `E` 直接涂一下（见下面）。没问题就把 `shore=show` 去掉。
 4. 加上 `&export=ascii,flow`，等它显示 `done`，两段视频就在 `out/` 里了。
 
 </details>
@@ -128,9 +128,10 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `speed=1` | 海浪的速度（水）；云的速度用 `clouds=1` |
 | `sky=show` | 用蓝色标出它认为是天空的地方；`sky=off` 不再单独处理天空（有海时天空会跟着海一起动） |
 | `shore=show` | 用红色标出它让哪些地方保持不动 |
+| `marks=input/photo-marks.png` | 你自己涂的修正，按 `E` 涂完会自动保存并加上 |
 | `haze=0` | 地平线上不加雾 |
 
-在页面里按 `M` 切换 ASCII 和普通画面，空格暂停。
+在页面里按 `M` 切换 ASCII 和普通画面，空格暂停，`E` 打开画笔。
 
 </details>
 
@@ -138,11 +139,11 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 <summary><b>效果不对怎么办</b></summary>
 <br>
 
-- **不该动的地方动了。** 先用 `shore=show` 看一下，再用 `scene=` 手动指定。
+- **不该动的动了，或者该动的没动。** 按 `E` 直接涂：`1` 是保持不动（红色），`2` 是让它动（绿色），`3` 是橡皮，`[` `]` 或滚轮调画笔大小。按 `Enter` 保存，标记会存进 `input/` 并自动重新加载，导出时也会用上。`Esc` 取消。
 - **天空不对。** 用 `sky=show` 看一下，或者用 `sky=off` 关掉。
 - **太平静或太乱。** 试试 `amp=0.6` 或 `amp=1.3`。
 
-它只靠颜色和纹理来分水、陆地和天空。大部分海边照片没问题，但浅色天空前的白楼、蓝玻璃大楼这类可能会认错。
+它只靠颜色和纹理来分水、陆地和天空。大部分海边照片没问题，但浅色天空前的白楼、蓝玻璃大楼这类可能会认错。认错了就按 `E` 涂掉。
 
 </details>
 
@@ -157,6 +158,7 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `src/water.js` | 水、浪花拍岸、飘动的云 |
 | `src/field.js` | 草和田野里摆动的草叶 |
 | `src/post.js` | 把画面变成 ASCII |
+| `src/editor.js`、`src/marks.js` | `E` 画笔，以及涂的标记怎么覆盖自动识别 |
 | `server.mjs` | 本地服务器，也负责写出导出的视频 |
 | `npm run check` | 检查导出的循环首尾有没有跳一下 |
 

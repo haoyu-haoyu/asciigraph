@@ -122,22 +122,31 @@ function wash(land, kinds, sea, hsvs, w, h, stone) {
 // yellow-green is glitter on the water, not grass)
 const greenOf = (hu, s, v) => smooth(40, 50, hu) * (1 - smooth(105, 120, hu)) * smooth(0.2, 0.3, s) * smooth(0.08, 0.15, v)
   * (1 - smooth(0.8, 0.9, v) * (1 - smooth(55, 65, hu)));
-// where grass sways: green under no sky, softened one cell
-function swayOf(grid, sky, still) {
+// where grass sways: green under no sky, softened one cell; hold (or null):
+// how much of each cell may sway at all after that (painted still: none, to
+// the edge of the stroke)
+function swayOf(grid, sky, still, hold = null) {
   const { w, h, n, hsvs } = grid;
   const g = new Float32Array(n);
   for (let i = 0; i < n; i++) g[i] = greenOf(hsvs[i * 3], hsvs[i * 3 + 1], hsvs[i * 3 + 2]) * (1 - (sky ? sky[i] : 0)) * still(i);
-  return blur(blur(g, w, h, 1), w, h, 1);
+  const s = blur(blur(g, w, h, 1), w, h, 1);
+  if (hold) for (let i = 0; i < n; i++) s[i] *= hold(i);
+  return s;
 }
+const holdOf = (marks) => (marks ? (i) => 1 - marks.still[i] : null);
 
-// A sky scene (no water): everything under the sky still, the grass swaying.
-export function stillMask(grid, sky) {
+// A sky scene (no water): everything under the sky still, the grass swaying;
+// what marks (marks.js) paint as moving moves like water, and grass painted
+// still doesn't sway.
+export function stillMask(grid, sky, marks = null) {
   const { w, h, n } = grid;
-  return maskTexture(w, h, new Float32Array(n), swayOf(grid, sky, () => 1));
+  return maskTexture(w, h, marks ? marks.move : new Float32Array(n), swayOf(grid, sky, () => 1, holdOf(marks)));
 }
 
-// seaHorizon: the sky above ends in a straight sea horizon (sky.js)
-export function shoreMask(grid, sky, seaHorizon = false) {
+// seaHorizon: the sky above ends in a straight sea horizon (sky.js).
+// marks (marks.js, or null): painted still or moving, over what was found.
+// detect: false (shore=off) finds no land; marks still apply.
+export function shoreMask(grid, sky, seaHorizon = false, { marks = null, detect = true } = {}) {
   const { w, h, n, hsvs, busy } = grid;
   const skyAt = (i) => (sky ? sky[i] : 0);
   const wetAt = new Float32Array(n), wetSat = [];
@@ -209,31 +218,37 @@ export function shoreMask(grid, sky, seaHorizon = false) {
     if (lb0[i] > 0.3 && lb0[i] < 0.7) { edge++; touch += near[i]; }
   }
   const contact = edge ? touch / edge : 0;
-  const on = wet / n >= MIN_WATER && solid / n >= MIN_LAND && contact >= MIN_CONTACT;
+  const found = detect && wet / n >= MIN_WATER && solid / n >= MIN_LAND && contact >= MIN_CONTACT;
+  // painted still land keeps the mask on even where none was found
+  const on = found || (marks != null && marks.still.some((v) => v > 0.01));
 
   // which way is ashore: from the moving water's centre to the still land's
   // (frame heights, y up). Land all round the water (a lagoon, a cove seen
-  // from above) has no one way, so it gives none.
-  const mask = new Float32Array(n);
+  // from above) has no one way, so it gives none. Read off the land found,
+  // not the marks: a boat painted still mustn't turn the swell toward it.
+  const mask = new Float32Array(n), land0 = new Float32Array(n);
   let still = 0, lx = 0, ly = 0, ls = 0, wx = 0, wy = 0, ws = 0;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const m = on ? 1 - smooth(0.1, 0.7, lb[y * w + x]) : 1;
-    mask[y * w + x] = m;
+    const i = y * w + x;
+    const f = found ? 1 - smooth(0.1, 0.7, lb[i]) : 1;
+    const m = marks ? Math.max(f * (1 - marks.still[i]), marks.move[i]) : f;
+    mask[i] = m; land0[i] = 1 - f;
     if (m < 0.5) still++;
     const X = (x + 0.5) / h, Y = (h - 0.5 - y) / h;
-    const wm = m * (1 - skyAt(y * w + x));   // the sky is not the sea the waves come from
-    lx += (1 - m) * X; ly += (1 - m) * Y; ls += 1 - m; wx += wm * X; wy += wm * Y; ws += wm;
+    const wm = f * (1 - skyAt(i));   // the sky is not the sea the waves come from
+    lx += (1 - f) * X; ly += (1 - f) * Y; ls += 1 - f; wx += wm * X; wy += wm * Y; ws += wm;
   }
   // b: how close the land is, where waves surge up the rocks and drain back
   // (a sea in perspective only: water.js uses it on the water, times r). It
   // keeps rising all the way onto the land, so its slope always points at it.
+  // (the land found too: waves break on the shore, not round a painted boat)
   let byLand = null;
-  if (seaHorizon && on) {
+  if (seaHorizon && found) {
     const rn = Math.max(1, Math.round(0.04 * LONG));
-    byLand = blur(blur(mask.map((m) => 1 - m), w, h, rn), w, h, rn).map((x) => smooth(0.03, 0.6, x));
+    byLand = blur(blur(land0, w, h, rn), w, h, rn).map((x) => smooth(0.03, 0.6, x));
   }
-  const tex = maskTexture(w, h, mask, seaHorizon && on ? swayOf(grid, sky, (i) => 1 - mask[i]) : new Float32Array(n), byLand);
+  const tex = maskTexture(w, h, mask, seaHorizon && on ? swayOf(grid, sky, (i) => 1 - mask[i], holdOf(marks)) : new Float32Array(n), byLand);
   const dx = ls > 0 && ws > 0 ? lx / ls - wx / ws : 0, dy = ls > 0 && ws > 0 ? ly / ls - wy / ws : 0;
-  const onshore = on && Math.hypot(dx, dy) > 0.1 ? Math.atan2(dy, dx) : null;
+  const onshore = found && Math.hypot(dx, dy) > 0.1 ? Math.atan2(dy, dx) : null;
   return { tex, on, still: still / n, water: wet / n, land: solid / n, contact, onshore };
 }

@@ -14,6 +14,7 @@ Only needed when changing the code. After any change, re-run the Checks in SKILL
 | `src/water.js` | water and sky scenes: perspective swell, the waves breaking on land, drifting clouds, horizon haze |
 | `src/field.js` | grass scene: the swaying strands |
 | `src/ascii.js`, `src/font5x7.js`, `src/post.js` | turning a frame into stroke glyphs |
+| `src/marks.js`, `src/editor.js` | painted marks: read onto the grid, applied in `sky.js` and `shore.js` (and `field.js` for grass); the `E` brush |
 | `scripts/check-loop.mjs` | the seamless check |
 
 ## Changing the look
@@ -35,4 +36,6 @@ Only needed when changing the code. After any change, re-run the Checks in SKILL
 - **Shadows.** Shadows keep thin strokes plus a glow, so they read as dark colour, not black.
 - **Waves breaking.** The shore surge runs in, bursts white and falls back, in three beats. Its direction comes from the gradient of an unmasked "near land" channel, so it doesn't flip where the mask ends. A surge that only pulls toward the land looks like water being sucked into the shore.
 - **Perspective.** The sea is a plane seen from the shore. Screen motion is scaled by distance, and the along-view part by a further `seaLine · ps²`. Without that factor the far sea moves as fast as the near sea and looks like a wall.
+- **Marks and the loop.** Where grass is painted still, its light and gusts are held at the loop's first moment. At a soft edge they blend the held and the live value. Never slow the clock there instead (`uT * calm`): a partly slowed clock doesn't come back round, and the loop jumps.
+- **Marks and the scene guess.** The scene is chosen on the sky as found, not as marked. Otherwise painting the clouds still turns a sky photo into a "water" one.
 - **Flicker.** Measure it, don't eyeball it: the block-averaged (32×32) second difference between frames, near, mid-distance and far. Fine detail far off flickers first. Fade each wave by its on-screen wavelength.

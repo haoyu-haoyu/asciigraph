@@ -33,7 +33,8 @@ const MIN_TOP = 0.5;     // share of the top row that must look like sky
 const EDGE = 0.25;       // darkening between neighbouring cells that the sky can't cross
 const HORIZON = 0.6;     // share of the width whose brightness steps the same way on a horizon row
 
-export function skyMask(grid) {
+// marks (marks.js, or null): anything painted, still or moving, is not sky
+export function skyMask(grid, marks = null) {
   const { w, h, n, hsvs, busy } = grid;
   const v = (i) => hsvs[i * 3 + 2];
   // how much a cell looks like sky: clear (strict), cloud (white to grey,
@@ -97,6 +98,7 @@ export function skyMask(grid) {
     const more = flood((i) => sky[i] > 0.5, (j) => v(j) >= 0.25 && grey(j), w, h);
     for (let i = 0; i < n; i++) sky[i] = Math.max(sky[i], more[i]);
   }
+  if (marks) for (let i = 0; i < n; i++) sky[i] *= 1 - Math.max(marks.still[i], marks.move[i]);
   // how much of the sky's lower edge runs into blue that isn't sky: with no
   // straight horizon, that is glass, or far blue hills, not a sea (main.js)
   let rim = 0, blueRim = 0;

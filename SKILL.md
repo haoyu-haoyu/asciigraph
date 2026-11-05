@@ -9,6 +9,7 @@ Turns one image into a seamless loop. Water gets a travelling swell that breaks 
 
 This file is the workflow. Read these when the step calls for them:
 
+- [references/motion.md](references/motion.md): what each part of a photo should do (move or stay still, and how), what wrong looks like, and the fix. Read it before step 2 and when judging every render.
 - [references/parameters.md](references/parameters.md): every URL option, scene choice, wallpaper sizes.
 - [references/sharing.md](references/sharing.md): GIF / WebP / MP4, file sizes, GitHub README and profile banners.
 - [references/internals.md](references/internals.md): solved pitfalls and where to change the look. Only needed when editing the code.
@@ -32,6 +33,7 @@ This file is the workflow. Read these when the step calls for them:
    - Water with a shore: open `&shore=show`. The red tint is what stays still and should cover dry land only. If it covers water, use `&shore=off`.
    - A sky: open `&sky=show`. The blue tint should cover sky only, down to the horizon or skyline. If it covers sea, sand or buildings, use `&sky=off`. That ignores the sky entirely: over water the sky then moves with the sea, and the scene guess is made without it.
    - Grass: wind direction (`wind`), light direction (`light`), strand size (`density`). See parameters.md.
+   - Anything in the wrong region (a rock that swims, a cliff that breathes, a sea read as land): fix it with marks. Red keeps still, green lets it move. Either ask the user to press `E` in the page and paint, or make the marks file yourself (parameters.md, Marks). Then add `&marks=input/NAME-marks.png` to every URL that follows, export included.
    - Crops (wallpapers, banners): set `width` and `height` to the final size and move the frame with `focus`.
 5. **Export:** `?img=input/NAME&export=ascii,flow` plus the tuning options. Keep that tab in front until the title reads `done` or `failed` (a refused image also reads `failed`, with the reason on the page). A background or hidden tab renders several times slower. A 12 s loop at 1080 px wide takes about 10 minutes.
 6. **Check it** (below), convert it if it's going somewhere other than a video player (sharing.md), then report the file paths and anything that looked weak.
@@ -53,7 +55,7 @@ Run on every export. Get the bundled ffmpeg with `FF=$(node -p "require('ffmpeg-
    - Dark bands may read a little brighter in ASCII. That's expected from how cells are drawn.
    - Don't "fix" dullness by pushing exposure or stroke saturation. That's what made earlier versions look blown out.
 4. **No black specks.** If any appear, a shader produced NaN (internals.md).
-5. **Nothing still is moving.** Watch the flow version for a few seconds: cliffs, sand, buildings and rocks should stay put, and grass on the land may sway. If something wobbles, go back to step 4 of the workflow and check `shore=show` / `sky=show`.
+5. **Each part moves like the real thing.** Watch the flow version for a whole loop, then the ASCII one. Go through the parts you named before rendering, and check each against references/motion.md: still things still, waves heading toward the land in perspective, foam breaking and running back, clouds slow. Fix what has a fix; report what's a limit.
 
 ## Common requests
 
@@ -71,4 +73,4 @@ Say so up front when a photo hits one of these:
 
 - It reads water, land and sky from colour and texture alone. A white or pale building against a pale sky, snow, or a city of blue glass can be misread.
 - A sunset's orange band stays with what is below it.
-- Very thin objects (a pier, a boat, a mast) are below the mask's resolution and may move with the water.
+- Very thin objects (a pier, a boat, a mast) are below the mask's resolution and may move with the water. Paint them still with marks.

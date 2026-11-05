@@ -105,7 +105,7 @@ Then just ask, for example: *"Make this beach photo into a phone wallpaper loop.
 
 1. Put the photo in `input/` and open `http://localhost:5177/?img=input/beach.jpg`. It sorts out water, sand and sky by itself.
 2. Crop it to your screen with `&width=1179&height=2556` (that's an iPhone 15 Pro). If the wrong part ends up in frame, move it with `&focus=0.5,0.3`: across, then down, both from 0 to 1.
-3. Add `&shore=show` once. The sand should turn red and the sea shouldn't. Take it off again when it looks right.
+3. Add `&shore=show` once. The sand should turn red and the sea shouldn't. If it missed a rock or got something wrong, press `E` and paint over it (below). Take `shore=show` off again when it looks right.
 4. Add `&export=ascii,flow` and wait for `done`. Both videos are in `out/`.
 
 </details>
@@ -128,9 +128,10 @@ Everything goes in the URL.
 | `speed=1` | how fast the waves run (water); for clouds, `clouds=1` |
 | `sky=show` | tint what it thinks is sky in blue; `sky=off` to ignore it (over water it then moves with the sea) |
 | `shore=show` | tint what it's keeping still in red |
+| `marks=input/photo-marks.png` | your own corrections, painted with `E` (saved and added for you) |
 | `haze=0` | no haze on the horizon |
 
-In the page, `M` switches between ASCII and the plain view, and space pauses.
+In the page, `M` switches between ASCII and the plain view, space pauses, and `E` opens the brush.
 
 </details>
 
@@ -138,11 +139,11 @@ In the page, `M` switches between ASCII and the plain view, and space pauses.
 <summary><b>When it looks wrong</b></summary>
 <br>
 
-- **Something moves that shouldn't.** Look with `shore=show`, then set `scene=` yourself.
+- **Something moves that shouldn't, or the other way round.** Press `E` and paint it: `1` is keep still (red), `2` is let it move (green), `3` erases, `[` `]` or the mouse wheel change the brush size. `Enter` saves them to `input/` and reloads with them, so exports use them too. `Esc` cancels.
 - **The sky looks off.** Look with `sky=show`, or turn it off with `sky=off`.
 - **Too calm or too busy.** Try `amp=0.6` or `amp=1.3`.
 
-It tells water, land and sky apart by colour and texture alone. That's fine for most sea and beach photos. It can get a white building against a pale sky, or blue glass towers, wrong.
+It tells water, land and sky apart by colour and texture alone. That's fine for most sea and beach photos. It can get a white building against a pale sky, or blue glass towers, wrong. When it does, paint over it with `E`.
 
 </details>
 
@@ -157,6 +158,7 @@ It tells water, land and sky apart by colour and texture alone. That's fine for 
 | `src/water.js` | the water, the waves breaking and the drifting clouds |
 | `src/field.js` | the swaying strands for grass and fields |
 | `src/post.js` | turns a frame into ASCII |
+| `src/editor.js`, `src/marks.js` | the `E` brush, and how painted marks override what it found |
 | `server.mjs` | the local server; also writes the exported videos |
 | `npm run check` | checks that an exported loop has no visible jump |
 

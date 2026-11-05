@@ -411,7 +411,8 @@ const WATER_DIR_FS = /* glsl */`
 // opts: { image, maps, grid (masks.js readGrid), sky (sky.js skyMask, or null),
 //         stats (analyseWater), width, height, wind (rad), windGiven, light (rad),
 //         amp, churn, drift, cycles, speed, wavelength, shore: 'auto'|'off'|'show',
-//         skyOnly (no water: all but the sky stays still), skyShow, cloud (rad), clouds (speed) }
+//         skyOnly (no water: all but the sky stays still), skyShow, cloud (rad), clouds (speed),
+//         marks (marks.js marksOnGrid, or null), foundSky (the sky before the marks) }
 // churn, drift and wavelength may be null: then they come from the photo.
 export function buildWater(renderer, opts) {
   const { width: W, height: H, stats } = opts;
@@ -430,9 +431,12 @@ export function buildWater(renderer, opts) {
   const churn = opts.churn ?? 1.3 - 0.7 * streak;
   // dry land to keep still; off, or a photo without clear land: all water.
   // A sky photo with no water in it: everything under the sky keeps still.
-  const sky = opts.sky;
-  const shore = opts.shore === 'off' || opts.skyOnly ? null : shoreMask(opts.grid, sky?.sky ?? null, sky?.seaHorizon ?? false);
-  const still = shore?.on ? shore.tex : opts.skyOnly ? stillMask(opts.grid, sky?.sky ?? null) : maskTexture(1, 1, [1], [0]);
+  // Painted marks (marks.js) override both, shore=off included.
+  // (land is found against the sky as found: marks act only on the result)
+  const sky = opts.sky, found = opts.foundSky ?? sky, marks = opts.marks ?? null;
+  const shore = opts.skyOnly || (opts.shore === 'off' && !marks) ? null
+    : shoreMask(opts.grid, found?.sky ?? null, found?.seaHorizon ?? false, { marks, detect: opts.shore !== 'off' });
+  const still = shore?.on ? shore.tex : opts.skyOnly ? stillMask(opts.grid, found?.sky ?? null, marks) : maskTexture(1, 1, [1], [0]);
   const photo = new THREE.Texture(opts.image);
   photo.minFilter = THREE.LinearMipmapLinearFilter;
   photo.generateMipmaps = true;
@@ -452,7 +456,7 @@ export function buildWater(renderer, opts) {
   // sea plane (see seaPlane in the shader), where they roll in from the
   // horizon toward the camera and lean toward the shore; directions here are
   // on that plane (x across, y away from the camera).
-  const persp = !opts.skyOnly && sky?.seaLine != null;
+  const persp = !opts.skyOnly && found?.seaLine != null;
   const onshore = opts.windGiven ? null : shore?.onshore ?? null;
   const swellRef = persp && !opts.windGiven
     ? Math.atan2((onshore != null ? Math.sin(onshore) : 0) - 0.6, onshore != null ? Math.cos(onshore) : 0)
@@ -502,8 +506,8 @@ export function buildWater(renderer, opts) {
     uSway: { value: 0.0015 * Math.min(opts.amp, 1.4) }, uSkyShow: { value: opts.skyShow ? 1 : 0 },
     uCloud: { value: new THREE.Vector2(Math.cos(cloud), Math.sin(cloud)) },
     uCloudDrift: { value: 0.02 * Math.min(cloudSpeed, 2) }, uCloudCycles: { value: Math.max(1, Math.round(3 * Math.max(cloudSpeed, 0.34))) },
-    uHorizon: { value: sky ? sky.horizon : 0 },
-    uPersp: { value: persp ? 1 : 0 }, uSeaLine: { value: persp ? sky.seaLine : 1 },
+    uHorizon: { value: found ? found.horizon : 0 },
+    uPersp: { value: persp ? 1 : 0 }, uSeaLine: { value: persp ? found.seaLine : 1 },
     uHeading: { value: new THREE.Vector2(Math.cos(heading), Math.sin(heading)) },
     // (a run per cycle short enough that the drifting copies don't show a double crest)
     uWaveRun: { value: persp ? 0.06 * Math.min(opts.amp, 1.4) : 0 }, uSwellK: { value: persp ? 0.35 : 1 },

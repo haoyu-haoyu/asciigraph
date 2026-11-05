@@ -6,6 +6,7 @@
 // strands turn. Every animated term is integer-periodic in the loop phase t,
 // so the last frame flows straight into the first.
 import * as THREE from 'three';
+import { maskTexture } from './masks.js';
 
 const TAU = Math.PI * 2;
 const SEG = 7;                      // segments per strand
@@ -23,6 +24,7 @@ function mulberry32(a) {
 
 const COMMON = /* glsl */`
   uniform sampler2D tImg, tMap;
+  uniform sampler2D tStill;   // r: painted still (marks.js): no sway, and the light held too
   uniform vec2 uRes, uWind;
   uniform vec3 uSheen;
   uniform float uT, uLight, uAmp;
@@ -47,23 +49,29 @@ const COMMON = /* glsl */`
   vec2 windFrame(vec2 q) { return vec2(dot(q, uWind), dot(q, vec2(-uWind.y, uWind.x))); }
 
   // the sun swings around the light already in the image
-  vec3 sunDir() {
-    float az = uLight + 0.7 * sin(TAU * uT) + 0.15 * sin(TAU * 2.0 * uT + 1.3);
-    float el = 0.8 + 0.25 * sin(TAU * uT + 2.1);
+  vec3 sunDirAt(float t) {
+    float az = uLight + 0.7 * sin(TAU * t) + 0.15 * sin(TAU * 2.0 * t + 1.3);
+    float el = 0.8 + 0.25 * sin(TAU * t + 2.1);
     return normalize(vec3(cos(az), sin(az), el));
   }
   // warm light breaking through drifting cloud gaps, cool shade elsewhere
-  float sunPool(vec2 rq) { return smoothstep(0.32, 0.72, pfbm(rq * 1.3 + vec2(0.0, 5.1) - vec2(2.0 * uT, 0.0), vec2(2.0, 1000.0))); }
+  float sunPoolAt(vec2 rq, float t) { return smoothstep(0.32, 0.72, pfbm(rq * 1.3 + vec2(0.0, 5.1) - vec2(2.0 * t, 0.0), vec2(2.0, 1000.0))); }
+  // calm: 1 where things move, 0 where painted still. Where it is held, the
+  // light is the loop's first moment's; between, a blend of that and the live
+  // light (a blend of two looping things loops; a slowed clock would not)
+  float calmAt(vec2 uv) { return 1.0 - texture(tStill, uv).r; }
+  vec3 sunDir(float calm) { return calm < 1.0 ? normalize(mix(sunDirAt(0.0), sunDirAt(uT), calm)) : sunDirAt(uT); }
+  float sunPool(vec2 rq, float calm) { return calm < 1.0 ? mix(sunPoolAt(rq, 0.0), sunPoolAt(rq, uT), calm) : sunPoolAt(rq, uT); }
   vec3 poolTint(float sun) { return mix(vec3(0.74, 0.84, 0.72), vec3(1.25, 1.2, 0.98), sun); }
   // relight the hills: normals from the ridge and clump heights, compared
   // with how the image was lit to begin with
-  float relight(vec2 uv) {
+  float relight(vec2 uv, vec3 sun) {
     vec2 px = 5.0 / uRes;
     vec4 l = texture(tMap, uv - vec2(px.x, 0.0)), r = texture(tMap, uv + vec2(px.x, 0.0));
     vec4 d = texture(tMap, uv - vec2(0.0, px.y)), u = texture(tMap, uv + vec2(0.0, px.y));
     vec3 N = normalize(vec3((l.r - r.r) * 7.0 + (l.g - r.g) * 2.5, (d.r - u.r) * 7.0 + (d.g - u.g) * 2.5, 1.0));
     vec3 L0 = normalize(vec3(cos(uLight), sin(uLight), 0.75));
-    return clamp((0.3 + max(dot(N, sunDir()), 0.0)) / (0.3 + max(dot(N, L0), 0.0)), 0.5, 2.0);
+    return clamp((0.3 + max(dot(N, sun), 0.0)) / (0.3 + max(dot(N, L0), 0.0)), 0.5, 2.0);
   }`;
 
 const STRAND_VS = /* glsl */`
@@ -74,8 +82,12 @@ const STRAND_VS = /* glsl */`
   attribute float aDepth;
   varying vec2 vRestUv;
   varying vec2 vDir;
-  varying float vS, vSide, vGust;
+  varying float vS, vSide, vGust, vCalm;
   const int SEG = ${SEG};
+  float gustAt(vec2 rq, float t) {
+    return smoothstep(0.25, 0.9, (0.5 + 0.5 * sin(TAU * 1.6 * rq.x - TAU * 3.0 * t))
+           * (0.5 + 0.9 * pfbm(rq * 4.0 - vec2(8.0 * t, 0.0), vec2(8.0, 1000.0))));
+  }
 
   void main() {
     vec4 m = texture(tMap, aRoot);
@@ -97,10 +109,11 @@ const STRAND_VS = /* glsl */`
     // each strand adds a small motion of its own
     float sub = pfbm(rq * 2.2 - vec2(8.0 * uT, 0.0), vec2(4.0, 1000.0)) * 2.0 - 1.0;
     float lean = 0.3 * sin(TAU * uT);
-    float gust = smoothstep(0.25, 0.9, (0.5 + 0.5 * sin(TAU * 1.6 * rq.x - TAU * 3.0 * uT))
-                 * (0.5 + 0.9 * pfbm(rq * 4.0 - vec2(8.0 * uT, 0.0), vec2(8.0, 1000.0))));
-    float amp = (1.05 + 0.6 * gust) * uAmp;
-    float own = 0.12 * sin(TAU * 6.0 * uT + aParam.z) + 0.06 * sin(TAU * 9.0 * uT + aParam.z * 1.7);
+    // painted still: no bend, and the gust's sheen held at the first moment
+    float calm = calmAt(aRoot);
+    float gust = calm < 1.0 ? mix(gustAt(rq, 0.0), gustAt(rq, uT), calm) : gustAt(rq, uT);
+    float amp = (1.05 + 0.6 * gust) * uAmp * calm;
+    float own = (0.12 * sin(TAU * 6.0 * uT + aParam.z) + 0.06 * sin(TAU * 9.0 * uT + aParam.z * 1.7)) * calm;
     float L = aParam.x * (0.8 + 0.5 * m.g), W = aParam.y;
 
     int seg = int(aStrand.y + 0.5);
@@ -125,7 +138,7 @@ const STRAND_VS = /* glsl */`
     rest += vec2(-rdir.y, rdir.x) * side;
 
     vRestUv = rest / uRes;
-    vDir = dir; vS = sHere; vSide = aStrand.x; vGust = gust;
+    vDir = dir; vS = sHere; vSide = aStrand.x; vGust = gust; vCalm = calm;
     // taller clumps draw over the hollows
     float z = 0.9 - 0.85 * (0.65 * m.g + 0.35 * aDepth);
     gl_Position = vec4(pos / uRes * 2.0 - 1.0, z, 1.0);
@@ -135,7 +148,7 @@ const STRAND_FS = /* glsl */`
   ${COMMON}
   varying vec2 vRestUv;
   varying vec2 vDir;
-  varying float vS, vSide, vGust;
+  varying float vS, vSide, vGust, vCalm;
   void main() {
     // MSAA samples can extrapolate varyings past the strand; pow() of a
     // negative s would be NaN
@@ -144,13 +157,14 @@ const STRAND_FS = /* glsl */`
     vec3 c = toLin(texture(tImg, vRestUv).rgb);
     c *= mix(0.72, 1.18, pow(s, 0.6)) * (1.0 - 0.22 * vSide * vSide);  // darker roots, rounded edges
     vec2 uv = gl_FragCoord.xy / uRes;
-    float sun = sunPool(windFrame(isoOf(uv)));
-    c *= mix(1.0, relight(vRestUv), 0.7) * poolTint(sun);
+    float sun = sunPool(windFrame(isoOf(uv)), vCalm);
+    vec3 L = sunDir(vCalm);
+    c *= mix(1.0, relight(vRestUv, L), 0.7) * poolTint(sun);
 
     // anisotropic glint: a strand lights up when it turns across the sun,
     // so turning regions flash together like a school of fish
     vec3 T = normalize(vec3(vDir, 0.55));
-    vec3 H = normalize(sunDir() + vec3(0.0, 0.0, 1.0));
+    vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
     float th = dot(T, H);
     float glint = pow(sqrt(max(0.0, 1.0 - th * th)), 70.0) * smoothstep(0.2, 1.0, s);
     vec3 lightCol = vec3(1.0, 0.94, 0.7) * (0.35 + 0.65 * sun);
@@ -185,7 +199,7 @@ const GROUND_FS = /* glsl */`
   varying vec2 vUv;
   void main() {
     vec3 c = toLin(textureLod(tImg, vUv, 1.5).rgb) * 0.62;
-    c *= poolTint(sunPool(windFrame(isoOf(vUv))));
+    c *= poolTint(sunPool(windFrame(isoOf(vUv)), calmAt(vUv)));
     gl_FragColor = vec4(c, 1.0);
   }`;
 
@@ -220,7 +234,8 @@ function strandGeometry(rand, W, H, density) {
   return { geo, count };
 }
 
-// opts: { image, maps, width, height, wind (rad), light (rad), amp, density }
+// opts: { image, maps, width, height, wind (rad), light (rad), amp, density,
+//         marks (marks.js marksOnGrid, or null), grid (masks.js readGrid, with marks) }
 export function buildField(renderer, opts) {
   const { width: W, height: H } = opts;
   const photo = new THREE.Texture(opts.image);
@@ -229,6 +244,7 @@ export function buildField(renderer, opts) {
   photo.needsUpdate = true;
   const uniforms = {
     tImg: { value: photo }, tMap: { value: opts.maps.tex },
+    tStill: { value: opts.marks ? maskTexture(opts.grid.w, opts.grid.h, opts.marks.still) : maskTexture(1, 1, [0]) },
     uRes: { value: new THREE.Vector2(W, H) }, uT: { value: 0 },
     uWind: { value: new THREE.Vector2(Math.cos(opts.wind), Math.sin(opts.wind)) },
     uLight: { value: opts.light }, uAmp: { value: opts.amp },

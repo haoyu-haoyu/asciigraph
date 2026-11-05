@@ -22,6 +22,7 @@ Everything goes in the page's URL: `http://localhost:5177/?img=input/NAME&option
 |---|---|---|
 | `scene` | `auto` | `grass`, `water` or `sky`. `auto` picks one from the colours and refuses anything that is none of them |
 | `shore` | `auto` | water: keep dry land still. `off` makes it all water; `show` tints the still part red |
+| `marks` | — | a PNG of hand-painted corrections (see below). `E` in the page paints one and adds it for you |
 | `sky` | `auto` | drift the clouds. `show` tints what it reads as sky blue. `off` ignores the sky altogether: in a water scene it then moves with the water, and a sky scene can't run without it (`scene=sky&sky=off` is refused) |
 
 How `auto` decides:
@@ -30,6 +31,27 @@ How `auto` decides:
 - Otherwise, if there is a sky along the top edge, what lies under it decides. It's a water scene, with the clouds drifting too, when there is enough water under the sky and either the sky meets a sea or the whole frame reads as water. Otherwise it's a sky scene if at least a fifth of the frame is sky.
 - With no sky (or `sky=off`), the colour guess alone decides: water, grass, or refused.
 - A sky photo with no water keeps everything under the sky still.
+
+## Marks
+
+A marks file overrides what the masks found, wherever it is painted:
+
+- **Red** (255, 0, 0): keep this still. No swell, no cloud drift, no grass sway, and on grass the light is held too.
+- **Green** (0, 255, 0): this is water; let it move, even if it was read as land or sky. Water and sky scenes only: a grass scene already moves everywhere, so it ignores green.
+- **Transparent:** leave it to the masks. Alpha is how strongly a mark applies, so soft edges blend.
+
+The file has the shape of the whole, uncropped photo (any resolution), so it still fits after `width`, `height` or `focus` change. The scene guess ignores the marks: they only change what moves.
+
+To make one without the brush, draw it on a canvas in the page and post it; the server saves it as `input/NAME-marks.png` and answers with the path:
+
+```js
+const img = await new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = '/input/NAME.jpg'; });
+const cv = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height });
+const g = cv.getContext('2d');
+g.fillStyle = 'rgb(255,0,0)'; g.fillRect(0.30 * cv.width, 0.55 * cv.height, 0.15 * cv.width, 0.2 * cv.height);   // keep still
+const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
+(await fetch('/marks?img=input/NAME.jpg', { method: 'POST', body: blob })).json();   // → { file: 'input/NAME-marks.png' }
+```
 
 ## Motion
 

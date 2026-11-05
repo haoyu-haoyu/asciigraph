@@ -48,11 +48,15 @@
 //   haze=0.35          sea seen from the shore (a straight sea horizon): how
 //                      much of the air's colour lies over the sea at the
 //                      horizon, fading toward the camera (0 = none)
+//   marks=input/my-marks.png
+//                      hand-painted overrides, the shape of the uncropped image:
+//                      red keeps a part still (no swell, cloud or sway), green
+//                      lets it move as water. Paint them in the page with E
 //   cycles=6           water: flow cycles per loop (whole number)
 //   speed=1            water: swell speed multiplier (each wave is rounded to
 //                      whole cycles per loop, at least one, so very low
 //                      speeds stop slowing down)
-// Keys: M switches mode, Space pauses.
+// Keys: M switches mode, Space pauses, E paints marks (editor.js).
 import * as THREE from 'three';
 import { loadImage, deriveMaps } from './maps.js';
 import { buildField } from './field.js';
@@ -62,6 +66,8 @@ import { classifyImage } from './classify.js';
 import { readGrid } from './masks.js';
 import { skyMask } from './sky.js';
 import { makePost } from './post.js';
+import { marksOnGrid } from './marks.js';
+import { openEditor } from './editor.js';
 
 const q = new URLSearchParams(location.search);
 // a number from the URL, or d when it is missing, 'auto' or not a number
@@ -80,17 +86,25 @@ const even = (v) => Math.max(2, Math.round(v / 2) * 2); // H.264 wants even size
 const W = even(num('width', 1080));
 const cropped = num('height', 0) > 0;
 const H = cropped ? even(num('height', 0)) : even((W * image.height) / image.width);
-if (cropped) image = cropTo(image, W / H, (q.get('focus') || '0.5,0.5').split(',').map(Number));
+// the part of the image in frame, as fractions of it (all of it unless cropped)
+const crop = cropped ? cropRect(image, W / H, (q.get('focus') || '0.5,0.5').split(',').map(Number)) : { x: 0, y: 0, w: 1, h: 1 };
+const original = image;
+if (cropped) image = cropTo(image, crop);
 const maps = deriveMaps(image);
 
-// Cut the largest W:H window out of the image, placed by focus (0–1 each way).
-function cropTo(img, aspect, [fx = 0.5, fy = 0.5]) {
+// The largest W:H window of the image, placed by focus (0–1 each way).
+function cropRect(img, aspect, [fx = 0.5, fy = 0.5]) {
   let w = img.width, h = img.height;
   if (w / h > aspect) w = Math.round(h * aspect); else h = Math.round(w / aspect);
   const clamp = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5);
+  return { x: ((img.width - w) * clamp(fx)) / img.width, y: ((img.height - h) * clamp(fy)) / img.height, w: w / img.width, h: h / img.height };
+}
+// that window cut out of an image, at the image's own resolution (the marks
+// are a different size from the photo, but the same shape)
+function cropTo(img, r) {
   const cv = document.createElement('canvas');
-  cv.width = w; cv.height = h;
-  cv.getContext('2d').drawImage(img, (img.width - w) * clamp(fx), (img.height - h) * clamp(fy), w, h, 0, 0, w, h);
+  cv.width = Math.max(1, Math.round(r.w * img.width)); cv.height = Math.max(1, Math.round(r.h * img.height));
+  cv.getContext('2d').drawImage(img, r.x * img.width, r.y * img.height, r.w * img.width, r.h * img.height, 0, 0, cv.width, cv.height);
   return cv;
 }
 const rad = (deg) => (deg * Math.PI) / 180;
@@ -109,15 +123,29 @@ const wind = windGiven ? rad(num('wind', 0)) : maps.dominant;
 // blue glass moves with it).
 const skyMode = q.get('sky')?.trim().toLowerCase();
 const grid = readGrid(image);
-const sky = skyMode === 'off' ? null : skyMask(grid);
+const marksPath = q.get('marks')?.trim() || null;
+let marksImg = null;
+if (marksPath) {
+  try {
+    marksImg = await loadImage(`/${marksPath.replace(/^\/+/, '')}`);
+  } catch (e) {
+    hud.innerHTML = `Couldn't load the marks <code>${marksPath}</code>. Paint them with <code>E</code>, or drop <code>marks=</code>.`;
+    document.title = 'failed';
+    throw e;
+  }
+}
+const marks = marksImg ? marksOnGrid(cropTo(marksImg, crop), grid) : null;
+// the scene is judged on the sky as found; the marks only change what moves
+const foundSky = skyMode === 'off' ? null : skyMask(grid);
+const sky = marks && foundSky ? skyMask(grid, marks) : foundSky;
 const asked = ['grass', 'water', 'sky'].includes(q.get('scene')) ? q.get('scene') : null;
 const guess = asked ? null : classifyImage(image);
 let scene = asked ?? guess.kind;
-if (!asked && scene !== 'grass' && sky) {
-  const under = classifyImage(image, sky).shares;
-  scene = under.water >= 0.3 && (sky.seaBelow || guess.kind === 'water') ? 'water' : sky.share >= 0.2 ? 'sky' : scene;
+if (!asked && scene !== 'grass' && foundSky) {
+  const under = classifyImage(image, foundSky).shares;
+  scene = under.water >= 0.3 && (foundSky.seaBelow || guess.kind === 'water') ? 'water' : foundSky.share >= 0.2 ? 'sky' : scene;
 }
-if (scene === 'sky' && !sky) scene = null;
+if (scene === 'sky' && !foundSky) scene = null;
 if (!scene) {
   const pct = (v) => `${Math.round(v * 100)}%`;
   hud.innerHTML = asked === 'sky'
@@ -144,9 +172,9 @@ const field = flowing
   ? buildWater(renderer, {
       ...common, windGiven, stats: analyseWater(image, sky), churn: num('churn', null), drift: num('drift', null),
       wavelength: num('wavelength', null), cycles: num('cycles', 6), speed: num('speed', 1), shore: q.get('shore')?.trim().toLowerCase(),
-      grid, sky, skyOnly: scene === 'sky', skyShow: skyMode === 'show', cloud: rad(num('cloud', 0)), clouds: num('clouds', 1), haze: num('haze', null),
+      grid, sky, skyOnly: scene === 'sky', skyShow: skyMode === 'show', cloud: rad(num('cloud', 0)), clouds: num('clouds', 1), haze: num('haze', null), marks, foundSky,
     })
-  : buildField(renderer, { ...common, density: num('density', 1) });
+  : buildField(renderer, { ...common, density: num('density', 1), marks, grid });
 const post = makePost(renderer, W, H, field);
 window.asciigraph = { field, post, renderer }; // handle for debugging in the console
 
@@ -205,16 +233,24 @@ if (q.has('export')) {
   let frozen = num('t', 0);
   const start = performance.now();
   const phase = () => (((performance.now() - start) / 1000) % LOOP) / LOOP;
+  // painting marks: the photo held still in the plain view under the brush
+  let editing = null;
   addEventListener('keydown', (e) => {
+    if (editing) return;   // the editor has its own keys
     if (e.key === 'm' || e.key === 'M') mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
     if (e.key === ' ') { frozen = phase(); paused = !paused; }
+    if (e.key === 'e' || e.key === 'E') {
+      const was = { mode, paused, frozen };
+      frozen = paused ? frozen : phase(); paused = true; mode = 'flow';
+      editing = openEditor({ canvas, hud, original, crop, marksImg, imgPath, onClose: () => { editing = null; ({ mode, paused } = was); frozen = was.paused ? was.frozen : frozen; } });
+    }
   });
   let frame = 0;
   const tick = () => {
     const t = paused ? frozen : phase();
     draw(t, frame++);
     post.output(mode);
-    hud.textContent = `${info} · t=${t.toFixed(3)} · [M] ${mode} · [space] pause`;
+    if (!editing) hud.textContent = `${info} · t=${t.toFixed(3)} · [M] ${mode} · [space] pause · [E] mark still / moving`;
     requestAnimationFrame(tick);
   };
   tick();

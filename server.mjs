@@ -39,6 +39,12 @@ function encode(tag, fps) {
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   try {
+    // only this page may post: another site open in the same browser can't
+    // write files here (a browser always sends Origin on a cross-site POST)
+    const origin = req.headers.origin;
+    if (req.method === 'POST' && origin && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      res.statusCode = 403; res.end('forbidden'); return;
+    }
     if (req.method === 'POST' && url.pathname === '/frame') {
       const dir = path.join(OUT, safeTag(url.searchParams.get('tag')));
       const i = Number(url.searchParams.get('i'));
@@ -46,6 +52,23 @@ http.createServer(async (req, res) => {
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, `f_${String(i).padStart(4, '0')}.png`), await readBody(req));
       res.end('ok');
+      return;
+    }
+    // painted marks (editor.js): saved as input/NAME-marks.png, NAME as the
+    // page names exports (main.js)
+    if (req.method === 'POST' && url.pathname === '/marks') {
+      const img = url.searchParams.get('img') || '';
+      const name = path.basename(img, path.extname(img)).replace(/[^\p{L}\p{N}_-]/gu, '-');   // (letters of any script: 海滩 and 沙滩 stay apart)
+      const body = await readBody(req);
+      if (!name || body.length < 8 || !body.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+        res.statusCode = 400; res.end('expected a PNG and img='); return;
+      }
+      const file = path.join(ROOT, 'input', `${name}-marks.png`);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(`${file}.tmp`, body);
+      fs.renameSync(`${file}.tmp`, file);
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ file: path.relative(ROOT, file).split(path.sep).join('/') }));
       return;
     }
     if (req.method === 'POST' && url.pathname === '/encode') {
