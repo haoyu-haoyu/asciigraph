@@ -79,6 +79,19 @@
   </tr>
 </table>
 
+<p align="center"><sub>火焰，按颜色找出来（<code>scene=fire</code>）：</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/readme/gallery/campfire.webp" width="100%" alt="黄昏时湖边石滩上的篝火，火舌从木柴上往上窜"></td>
+    <td width="50%"><img src="./assets/readme/gallery/candle.webp" width="100%" alt="木桌上的一支蜡烛，旁边有杯子和书，火苗轻轻摇"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>篝火</b><br><sub>火舌往上窜、断开，木柴不动</sub></td>
+    <td align="center"><b>蜡烛</b><br><sub>火苗小，只轻轻摇</sub></td>
+  </tr>
+</table>
+
 <br>
 
 <img src="./assets/readme/zh/section-start.svg" width="100%" alt="04 开始使用">
@@ -136,7 +149,7 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `focus=0.5,0.3` | 裁剪时保留照片的哪一部分 |
 | `mode=flow` | 一打开就是普通画面，不是 ASCII |
 | `export=ascii,flow` | 把其中一个或两个版本存成视频 |
-| `scene=water` | 它认错照片类型时手动指定（还有 `grass`、`sky`，以及它不会自己选的 `waterfall` 瀑布、`steam` 蒸汽） |
+| `scene=water` | 它认错照片类型时手动指定（还有 `grass`、`sky`，以及它不会自己选的 `waterfall` 瀑布、`steam` 蒸汽、`fire` 火焰） |
 | `amp=0.6` | 动得少一点；`amp=1.3` 动得多一点 |
 | `speed=1` | 海浪的速度（水）；云的速度用 `clouds=1` |
 | `sky=show` | 用蓝色标出它认为是天空的地方；`sky=off` 不再单独处理天空（有海时天空会跟着海一起动） |

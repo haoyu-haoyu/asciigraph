@@ -47,6 +47,17 @@ Ask for these with `scene=waterfall` or `scene=steam`; auto never picks them. Ch
 | Steam, smoke | rises slowly along its own curls, swaying a little | it races, or holds still | `speed` (0.6 slower), `amp` for more sway |
 | Cup, chimney, anything lit behind the steam | stays still | a highlight on it rises like steam | paint it red |
 
+## Fire
+
+Ask for it with `scene=fire`; auto never picks it. It finds flames by colour: bright, red through yellow, and lighter than what is around them. Check `shore=show` first: only the flames should be untinted.
+
+| Part | Should | Looks wrong when | Fix |
+|---|---|---|---|
+| Flames | the base holds; higher up, new thin tongues keep rising, curling and breaking off; a wide fire swells and shrinks about once a second | they slide up as one sheet, the same shape just wobbles, or the logs bend with them | `speed` (0.7 a calm hearth, 1.3 a bonfire), `amp` for how far they sway. A log reaching high into the flames sways with them; paint it red if it shows |
+| The room around it | brightens and dims with the fire, most near it | it pulses on its own, or stays dead still | `amp` scales the flicker and the glow together (0.6 calm, 1.4 lively) |
+| Candle wax, a lamp shade, anything the flame lights brightly | stays still (it still glows with the flame) | it rises like flame: lit wax is as bright and warm as the flame itself | paint it red. A candle almost always needs this below the flame's foot |
+| Sunset, warm lamps, lit windows elsewhere | stay still | a bright orange patch rises like a flame | paint it red (a small lamp flickering along is fine to keep) |
+
 ## Sky
 
 | Part | Should | Looks wrong when | Fix |

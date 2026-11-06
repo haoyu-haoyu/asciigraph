@@ -1,4 +1,4 @@
-// Waterfalls and steam: things that run along their own streaks. A falling
+// Waterfalls and steam: things that run along their own streaks (fire: below). A falling
 // sheet of water is drawn as white streaks down the rock, and steam or smoke
 // as soft strands curling up, so the photo itself says which line they move
 // along (the structure tensor: the way the texture runs, and how clearly).
@@ -14,6 +14,10 @@
 // too: found by flooding out from the fall's foot through what is coloured
 // like water and not like rock, it drifts away from the foot, rings of
 // ripples spread out from it, and its surface churns a little.
+// Fire is found by its colour (bright, flame-coloured, lighter than around
+// it) rather than its streaks, and moves its own way (FIRE): the photo's
+// flame at its base, drawn new higher up. The room it lights brightens and
+// dims with it.
 // Same interface as buildWater.
 import * as THREE from 'three';
 import { QUAD_VS } from './field.js';
@@ -37,6 +41,30 @@ const LONG = 320;   // field resolution along the long side
 const KINDS = {
   waterfall: { way: -1, lean: [0.55, 0.8], energy: [0.02, 0.12], edge: null, lift: 0.08, floor: [0.12, 0.3], grey: [0.25, 0.5], carry: 0.93, speed: 0.16, cycles: 36, billow: 0.0012, pool: true },
   steam: { way: 1, lean: [0.2, 0.5], energy: [0.002, 0.015], edge: [0.06, 0.12], lift: 0.04, floor: [0.05, 0.12], grey: [0.4, 0.6], carry: 0.9, speed: 0.035, cycles: 12, billow: 0.006, pool: false },
+  // fire is found by its colour, not its streaks (fireFound), and moves its
+  // own way (FIRE), not by the drift
+  fire: { way: 1, lean: [0.2, 0.5], lift: 0.06, carry: 0.9, pool: false, fire: true, minBody: 0.0004 },
+};
+// Fire, as real flames move: the base holds still at the fuel and the
+// flame moves more the higher up it is; tongues lick up, stretch and break
+// off at the tips; the whole fire swells and shrinks ("puffs") about once a
+// second, and its brightness wavers more slowly than that. (Measured, a
+// fire half a metre across puffs nearer 1.6 times a second, f ≈ 1.68/√D,
+// but at that pace a looping still read as too fast.) A narrow, tall
+// flame (a candle) is calm: it only sways and rises gently; a wide one
+// (a campfire, a hearth) is turbulent. Per value: [calm, turbulent].
+//   rise: how fast the tongues rise (flame heights per second)
+//   warp: how far the tips sway sideways and stretch up (flame heights)
+//   lick: how much the tips come and go; flicker: brightness ±
+//   carve: how deep the rising tongues cut the flame's heat; synth: how
+//   much of the upper flame is drawn new (in its own colours) rather than
+//   read from the photo
+//   tongue: tongue size (flame heights)
+// glow: how much the room around it brightens and dims with it, as far as
+// its light reaches (reach, frame heights); puffs, wavers: per second
+const FIRE = {
+  rise: [0.25, 0.5], carve: [0.35, 0.9], synth: [0.35, 0.85], warpX: [0.025, 0.075], warpY: [0.03, 0.11], lick: [0.15, 0.7], flicker: [0.1, 0.18], tongue: [0.4, 0.25],
+  glow: 0.3, reach: 0.25, puffs: 1, wavers: 0.5,
 };
 // the water below a fall: how fast it drifts away from the foot near it
 // (frame heights per second; it slows to 40% far off), how far the ripples'
@@ -84,11 +112,14 @@ export function pourField(img, kind, marksImg = null) {
     let ax = Math.cos(a), ay = -Math.sin(a);   // (grid rows run down; y up from here)
     if (ay * K.way < 0) { ax = -ax; ay = -ay; }
     const lean = smooth(K.lean[0], K.lean[1], Math.abs(ay));
-    const e = t / trTop;
-    const streaky = smooth(0.15, 0.45, coh) * smooth(K.energy[0], K.energy[1], e) * (K.edge ? 1 - smooth(K.edge[0], K.edge[1], e) : 1);
     lift[i] = smooth(0.0, K.lift, L[i] - around[i]);
-    const light = lift[i] * smooth(K.floor[0], K.floor[1], L[i]);
-    move[i] = lean * streaky * light * (1 - smooth(K.grey[0], K.grey[1], S[i]));
+    if (K.fire) move[i] = fireFound(px, i, L[i] - around[i]);
+    else {
+      const e = t / trTop;
+      const streaky = smooth(0.15, 0.45, coh) * smooth(K.energy[0], K.energy[1], e) * (K.edge ? 1 - smooth(K.edge[0], K.edge[1], e) : 1);
+      const light = lift[i] * smooth(K.floor[0], K.floor[1], L[i]);
+      move[i] = lean * streaky * light * (1 - smooth(K.grey[0], K.grey[1], S[i]));
+    }
     // the way to go, weighted by how sure it is, to be smoothed below (only
     // streaks along the way vote: tilted rock strata beside a fall don't pull it)
     vx[i] = ax * coh * lean; vy[i] = ay * coh * lean;
@@ -97,6 +128,8 @@ export function pourField(img, kind, marksImg = null) {
   // drop specks (a lit leaf that happens to be streaky)
   let m = blur(move, w, h, Math.max(1, Math.round(LONG * 0.012)));
   m = m.map((v) => smooth(0.12, 0.35, v));
+  // (fire: its shape is measured before the tongues are carried up)
+  let core = K.fire ? Float32Array.from(m) : null, raw = K.fire ? Float32Array.from(move) : null;
   // carried on, row by row (down a column: falls and plumes are near enough
   // upright), into what looks the same: as light, as colourless, and still
   // lighter than around it, so the pale rock or the pool below doesn't fall
@@ -104,11 +137,12 @@ export function pourField(img, kind, marksImg = null) {
   for (let k = 1; k < h; k++) {
     const y = down ? k : h - 1 - k, from = down ? y - 1 : y + 1;
     for (let x = 0; x < w; x++) {
-      const i = y * w + x, gate = smooth(K.floor[0], K.floor[1] + 0.1, L[i]) * (1 - smooth(K.grey[0], K.grey[1], S[i])) * lift[i];
+      // (flames lick up past their top into whatever is there, fading fast)
+      const i = y * w + x, gate = K.fire ? 1 : smooth(K.floor[0], K.floor[1] + 0.1, L[i]) * (1 - smooth(K.grey[0], K.grey[1], S[i])) * lift[i];
       m[i] = Math.max(m[i], m[from * w + x] * K.carry * gate);
     }
   }
-  m = dropSpecks(m, w, h);
+  m = dropSpecks(m, w, h, K.minBody ?? MIN_BODY);
   const pool = K.pool ? poolBelow(m, L, px, w, h) : { at: new Float32Array(n), dist: new Float32Array(n), wx: new Float32Array(n), wy: new Float32Array(n), top: h };
   if (marksImg) {
     // green above the fall's foot is more of the fall; below it, more of the
@@ -116,6 +150,8 @@ export function pourField(img, kind, marksImg = null) {
     const mk = marksOnGrid(marksImg, { w, h, n });
     const below = (i) => K.pool && ((i / w) | 0) > pool.top;
     m = m.map((v, i) => Math.max(v, below(i) ? 0 : mk.move[i]) * (1 - mk.still[i]));
+    if (core) core = core.map((v, i) => Math.max(v, mk.move[i]) * (1 - mk.still[i]));
+    if (raw) raw = raw.map((v, i) => Math.max(v, mk.move[i]) * (1 - mk.still[i]));
     pool.at = pool.at.map((v, i) => Math.max(v, below(i) ? mk.move[i] * (1 - m[i]) : 0) * (1 - mk.still[i]));
   }
   // the way, smoothed widely so the copies drift as one sheet, and carried
@@ -132,10 +168,55 @@ export function pourField(img, kind, marksImg = null) {
     fx[i] = bx / l; fy[i] = by / l;
   }
   const share = m.reduce((s, v) => s + v, 0) / n, poolShare = pool.at.reduce((s, v) => s + v, 0) / n;
-  return { w, h, n, move: m, pool: pool.at, dist: pool.dist, fx, fy, share, poolShare };
+  return { w, h, n, move: m, pool: pool.at, dist: pool.dist, fx, fy, share, poolShare, ...(K.fire ? { ...fireShape(core, raw, m, w, h), ...firePalette(move.filter((v) => v > 0.5).length >= 20 ? move : core, L, px) } : { glow: new Float32Array(n), up: new Float32Array(n), tall: 0, turb: 0 }) };
 }
 
 const mixN = (a, b, t) => a + (b - a) * t;
+
+// A flame, by colour: bright, warm (red through yellow; its white-hot core
+// counts when it is very bright), and lighter than around it, so the stone
+// or wood the fire lights, warm but dimmer, stays out.
+function fireFound(px, i, lift) {
+  const [hue, s, v] = hsv(px[i * 4] / 255, px[i * 4 + 1] / 255, px[i * 4 + 2] / 255);
+  const warm = Math.max(1 - smooth(55, 72, hue), smooth(340, 352, hue));
+  const core = smooth(0.9, 0.97, v);
+  const coloured = Math.max(smooth(0.2, 0.35, s) * warm, core * (s < 0.35 || warm > 0.5 ? 1 : 0));
+  return coloured * smooth(0.78, 0.92, v) * smooth(0.08, 0.2, lift);
+}
+
+// The fire's shape (measured on the flame as found, not the tongues carried
+// up past it): how tall it stands (frame heights: most columns with flame in
+// them span less), how turbulent it is (0 a narrow candle flame, 1
+// a wide fire), how far up the flame each cell is (0 at its base, 1 at its
+// tip), and how much of its light falls on each cell around it (0–1,
+// falling off out to FIRE.reach, none on the flame itself).
+function fireShape(core, raw, m, w, h) {
+  const n = w * h, bot = new Int32Array(w).fill(-1), span = [];
+  for (let x = 0; x < w; x++) {
+    let t = -1, b = -1;
+    for (let y = 0; y < h; y++) {
+      if (core[y * w + x] > 0.3) bot[x] = y;
+      // (its size from the flame's own colour, unsmoothed: smoothing widens a
+      // thin candle flame into a squat one; but only inside the smoothed mask,
+      // so a stray warm glint far above doesn't stretch the column)
+      if (raw[y * w + x] > 0.5 && core[y * w + x] > 0.3) { if (t < 0) t = y; b = y; }
+    }
+    if (t >= 0) span.push(b - t + 1);
+  }
+  span.sort((a, b) => a - b);
+  const tall = span.length ? span[Math.floor(span.length * 0.9)] / h : 0;
+  const turb = smooth(0.25, 0.8, span.length / h / Math.max(tall, 0.02));
+  // a tongue beside the body stands on the body's base, not its own
+  const k = Math.max(1, Math.round(w * 0.03)), base = new Int32Array(w).fill(-1);
+  for (let x = 0; x < w; x++) for (let d = -k; d <= k; d++) base[x] = Math.max(base[x], bot[Math.min(w - 1, Math.max(0, x + d))]);
+  const height = new Float32Array(n), rows = Math.max(1, tall * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (base[x] >= 0) height[y * w + x] = Math.min(1, Math.max(0, (base[x] - y) / rows));
+  const up = blur(height, w, h, 2);
+  const r = Math.max(2, Math.round(h * FIRE.reach * 0.35));
+  const wide = blur(blur(blur(m, w, h, r), w, h, r), w, h, r);
+  const top = wide.reduce((a, v) => (v > a ? v : a), 0) || 1;
+  return { glow: wide.map((v, i) => Math.sqrt(v / top) * (1 - m[i])), up, tall, turb };
+}
 
 // The water a fall lands in. Its foot: falling cells with none below. From
 // there, flood through cells coloured like the water just below the foot
@@ -201,9 +282,38 @@ function poolBelow(m, L, px, w, h) {
   return { at, dist, wx, wy, top };
 }
 
-// keeps only the moving patches of at least MIN_BODY of the frame, with
+// The fire's own colours, dim to bright: the cells that are clearly flame
+// (as found, before any smoothing: a cell on its edge, half flame and half
+// the night behind it, would bring in a muddy green; a flame found only
+// because it was painted green takes its painted cells instead) binned by
+// lightness (lo–hi: from its dimmest twentieth to nearly its brightest),
+// as a 32-wide strip; empty bins take the nearest filled one.
+function firePalette(flame, L, px) {
+  const ls = [];
+  for (let i = 0; i < flame.length; i++) if (flame[i] > 0.5) ls.push(L[i]);
+  ls.sort((a, b) => a - b);
+  // (no flame at all: any range will do, nothing is drawn)
+  const lo = ls.length ? ls[Math.floor(ls.length * 0.05)] : 0.5, hi = ls.length ? Math.max(lo + 0.05, ls[Math.floor(ls.length * 0.995)]) : 1;
+  const B = 32, sum = new Float32Array(B * 3), cnt = new Float32Array(B);
+  for (let i = 0; i < flame.length; i++) {
+    if (flame[i] <= 0.5) continue;
+    const b = Math.min(B - 1, Math.max(0, Math.floor(((L[i] - lo) / (hi - lo)) * B)));
+    for (let c = 0; c < 3; c++) sum[b * 3 + c] += px[i * 4 + c];
+    cnt[b]++;
+  }
+  const pal = new Uint8Array(B * 4);
+  for (let b = 0; b < B; b++) {
+    let k = b;
+    for (let d = 1; !cnt[k] && d < B; d++) k = cnt[b - d] ? b - d : cnt[b + d] ? b + d : k;
+    for (let c = 0; c < 3; c++) pal[b * 4 + c] = cnt[k] ? Math.round(sum[k * 3 + c] / cnt[k]) : 255 * (c === 0 ? 1 : c === 1 ? 0.6 : 0.2);
+    pal[b * 4 + 3] = 255;
+  }
+  return { pal, palLo: lo, palHi: hi };
+}
+
+// keeps only the moving patches of at least that share of the frame, with
 // their soft edges
-function dropSpecks(m, w, h) {
+function dropSpecks(m, w, h, min) {
   const n = w * h, seen = new Int32Array(n).fill(-1), keep = new Float32Array(n), stack = [];
   for (let s = 0; s < n; s++) {
     if (seen[s] >= 0 || m[s] < 0.3) continue;
@@ -217,7 +327,7 @@ function dropSpecks(m, w, h) {
         seen[j] = s; stack.push(j);
       }
     }
-    if (cells.length >= MIN_BODY * n) for (const i of cells) keep[i] = 1;
+    if (cells.length >= min * n) for (const i of cells) keep[i] = 1;
   }
   const near = blur(keep, w, h, 3);
   return m.map((v, i) => v * smooth(0.0, 0.15, near[i]));
@@ -241,12 +351,22 @@ function fieldTexture(f) {
 
 const POUR_COMMON = /* glsl */`
   uniform sampler2D tImg, tMap, tFlow;   // tFlow r: what falls, g: the pool below, ba: which way
-  uniform sampler2D tDist;               // r: how far from the fall's foot through the pool (÷ uDistMax)
+  uniform sampler2D tDist;               // r: how far from the fall's foot through the pool (÷ uDistMax); g: fire's light on what's around it; b: how far up the flame
   uniform vec2 uRes;
   uniform float uT, uDrift, uCycles, uBillow, uSways, uShow;
   // the pool: drift per cycle near the foot, ripple rings (spacing in frame
   // heights, whole rings per loop), churn
   uniform float uPoolDrift, uRing, uRings, uChurn, uChurnCycles, uDistMax;
+  // fire (FIRE): on, how turbulent, flicker and glow strength, sway and
+  // stretch, how much the tips come and go, tongue size and rise per cycle
+  // (frame heights), and per loop: rise cycles, puffs, wavers
+  uniform float uFire, uTurb, uFlicker, uGlow, uLick, uTongue, uRise, uRiseCycles, uPuffs, uFlickers;
+  uniform vec2 uWarp;
+  // fire's own colours dim to bright (tPal) over the lightness uPalLo–uPalHi;
+  // how far its heat is carved by the flame noise, and how much of the flame
+  // is drawn new rather than read from the photo
+  uniform sampler2D tPal;
+  uniform float uPalLo, uPalHi, uCarve, uSynth;
   varying vec2 vUv;
   const float TAU = 6.28318530718;
   float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -322,7 +442,39 @@ const POUR_COMMON = /* glsl */`
   // the fall) would carry the rock down with it: the still photo stands in
   vec3 readAt(vec2 uv, vec2 o, vec3 here) {
     return mix(here, toLin(texture(tImg, uv - o).rgb), smoothstep(0.2, 0.7, movesAt(uv - o)));
-  }`;
+  }
+  // fire's brightness, about -1.3..1.3, whole times per loop: the whole fire
+  // wavers (the same everywhere, so the room's light follows it), and each
+  // tongue a little on its own on top
+  float breath() { return (tfbm(vec2(3.7, 1.3), uFlickers) - 0.5) * 2.6; }
+  float flare(vec2 q) { return (tfbm(q / uTongue * vec2(1.0, 0.5), uFlickers) - 0.5) * 2.6; }
+  // noise rising through the flame, about -1..1: three copies a third of a
+  // cycle apart, cross-faded as in the drift (their squared weights sum to
+  // a half, so ×√2 keeps its strength even), tongues taller than wide
+  float rising(vec2 q, float seed) {
+    vec3 p = fract(uT * uRiseCycles + vec3(0.0, 1.0, 2.0) / 3.0), w = (1.0 - cos(TAU * p)) / 3.0;
+    vec2 s = q / uTongue * vec2(1.0, 0.5);
+    float r = uRise / uTongue * 0.5;
+    float v = w.x * fbm(s - vec2(0.0, r * (p.x - 0.5)) + seed)
+            + w.y * fbm(s - vec2(0.0, r * (p.y - 0.5)) + seed + 13.1)
+            + w.z * fbm(s - vec2(0.0, r * (p.z - 0.5)) + seed + 27.7);
+    return (v - 0.5) * 1.41 * 3.0;
+  }
+  // flame noise, about -1..1: thin tongues rising and curling (the noise
+  // read through a sideways swirl of its own), born and gone as they rise;
+  // cross-faded as rising()
+  float tongue(vec2 s, float seed) { return fbm(s + vec2(0.9 * (fbm(s * 0.6 + seed + 5.0) - 0.5), 0.0) + seed); }
+  float flames(vec2 q) {
+    vec3 p = fract(uT * uRiseCycles + vec3(0.0, 1.0, 2.0) / 3.0), w = (1.0 - cos(TAU * p)) / 3.0;
+    vec2 s = q / (uTongue * 0.6) * vec2(1.0, 0.35);
+    float r = uRise / (uTongue * 0.6) * 0.35;
+    float v = w.x * tongue(s - vec2(0.0, r * (p.x - 0.5)), 3.0)
+            + w.y * tongue(s - vec2(0.0, r * (p.y - 0.5)), 19.0)
+            + w.z * tongue(s - vec2(0.0, r * (p.z - 0.5)), 37.0);
+    return (v - 0.5) * 1.41 * 3.0;
+  }
+  float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+  float heatOf(vec3 c) { return clamp((lum(c) - uPalLo) / max(uPalHi - uPalLo, 0.02), 0.0, 1.0); }`;
 
 const POUR_FS = /* glsl */`
   ${POUR_COMMON}
@@ -330,7 +482,37 @@ const POUR_FS = /* glsl */`
     vec3 still = toLin(texture(tImg, vUv).rgb);
     float m = movesAt(vUv);
     vec3 c = still;
-    if (m > 0.004) {
+    if (uFire > 0.0 && m > 0.004) {
+      // the flame read from a little below and aside, more so higher up:
+      // the base holds, the tips sway, stretch and shrink; a puff runs up
+      // the flame; the tips come and go
+      float up = texture(tDist, vUv).b;
+      vec2 q = isoOf(vUv);
+      float puff = sin(TAU * (uPuffs * uT - up * 1.3)) * uTurb;
+      vec2 d = vec2(rising(q, 0.0) * uWarp.x * pow(up, 1.3), -(rising(q, 41.0) + 0.4 * puff) * uWarp.y * up);
+      vec2 at = vUv + uvOfIso(d);
+      vec3 f = toLin(texture(tImg, at).rgb);
+      f *= mix(1.0, smoothstep(-0.3, 0.4, rising(q * 1.6, 77.0) + 0.3 * puff), uLick * up * up);
+      // higher up, the flame is drawn new each moment: the photo's heat
+      // there (its shape), carved by tongues rising through it, some
+      // breaking off above the tips, in the photo's own flame colours; where
+      // the heat drops out, what is behind it: the photo, or where it was
+      // flame, the dark of the fire's dimmest red (dimming the bright flame
+      // itself turns it olive)
+      float hb = heatOf(textureLod(tImg, at, 2.0).rgb) * m;
+      float heat = hb + uCarve * up * (0.6 * flames(q) - 0.25 + 0.2 * puff);
+      // (blended as heat, the photo's and the drawn, then coloured: blending
+      // the colours, a bright yellow half covered by the dark turns olive;
+      // the colour runs down to the dimmest red well before the flame fades
+      // out, so its edges go yellow, orange, red, dark, as a flame's do)
+      float k = uSynth * smoothstep(0.1, 0.55, up);
+      float hk = mix(heatOf(texture(tImg, at).rgb), heat, k);
+      vec3 col = toLin(texture(tPal, vec2(smoothstep(0.3, 1.0, hk) * 31.0 / 32.0 + 0.5 / 32.0, 0.5)).rgb);
+      vec3 behind = mix(still, toLin(texture(tPal, vec2(0.5 / 32.0, 0.5)).rgb) * 0.08, smoothstep(0.15, 0.5, heatOf(textureLod(tImg, vUv, 2.0).rgb) * m));
+      f = mix(f, mix(behind, col, smoothstep(0.05, 0.3, hk)), k);
+      f *= max(1.0 + uFlicker * (0.6 * breath() + 0.4 * flare(q)), 0.0);
+      c = mix(still, f, m);
+    } else if (m > 0.004) {
       vec2 o0, o1, o2; vec3 w;
       float apart = phases(vUv, o0, o1, o2, w);
       vec3 mean = toLin(textureLod(tImg, vUv, 5.0).rgb);
@@ -344,6 +526,8 @@ const POUR_FS = /* glsl */`
       if (pp > 0.0) { float fade, ph = ringPhase(vUv, fade); c *= 1.0 + 0.05 * cos(ph) * fade * pp; }
       c = mix(still, c, m);
     }
+    // the room in the fire's light brightens and dims with it
+    if (uGlow > 0.0) c *= max(1.0 + uGlow * texture(tDist, vUv).g * breath(), 0.0);
     // shore=show: tint what stays still
     c = mix(c, vec3(0.9, 0.08, 0.05), uShow * (1.0 - m) * 0.6);
     gl_FragColor = vec4(c, 1.0);
@@ -363,7 +547,34 @@ const POUR_DIR_FS = /* glsl */`
     gl_FragColor = vec4(d * wt, wt, 1.0);
   }`;
 
-// opts: { image, maps, width, height, kind: 'waterfall'|'steam', speed,
+// fire's uniforms from its shape (null: not fire). Whole puffs, wavers and
+// rise cycles per loop; speed=0 holds it all, the room's light included.
+function fireUniforms(f, pace, amp, loop) {
+  const by = (v) => v[0] + (v[1] - v[0]) * (f ? f.turb : 0), tall = f ? Math.max(f.tall, 0.05) : 0, on = f && pace > 0;
+  const times = (per) => (on ? Math.max(1, Math.round(loop * per * pace)) : 0);
+  // (each tongue lives about a second)
+  const riseCycles = times(1);
+  return {
+    uFire: { value: f ? 1 : 0 }, uTurb: { value: f ? f.turb : 0 },
+    uFlicker: { value: on ? by(FIRE.flicker) * amp : 0 }, uGlow: { value: on ? FIRE.glow * amp : 0 },
+    uWarp: { value: new THREE.Vector2(by(FIRE.warpX), by(FIRE.warpY)).multiplyScalar(tall * amp) },
+    uLick: { value: f ? Math.min(1, by(FIRE.lick) * amp) : 0 }, uTongue: { value: f ? tall * by(FIRE.tongue) : 1 },
+    uRise: { value: riseCycles ? (by(FIRE.rise) * tall * pace * loop) / riseCycles : 0 }, uRiseCycles: { value: riseCycles },
+    uPuffs: { value: times(FIRE.puffs) }, uFlickers: { value: times(FIRE.wavers) },
+    tPal: { value: paletteTexture(f ? f.pal : null) }, uPalLo: { value: f ? f.palLo : 0 }, uPalHi: { value: f ? f.palHi : 1 },
+    uCarve: { value: f ? by(FIRE.carve) * Math.min(amp, 1.5) : 0 }, uSynth: { value: f ? by(FIRE.synth) : 0 },
+  };
+}
+
+function paletteTexture(pal) {
+  const tex = new THREE.DataTexture(pal ?? new Uint8Array(4), pal ? pal.length / 4 : 1, 1, THREE.RGBAFormat);
+  tex.magFilter = tex.minFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// opts: { image, maps, width, height, kind: 'waterfall'|'steam'|'fire', speed,
 //         cycles, amp, loop (s), marksImg (uncropped marks cut to the frame, or null),
 //         show (tint what stays still) }
 export function buildPour(renderer, opts) {
@@ -377,20 +588,21 @@ export function buildPour(renderer, opts) {
   // whole cycles per loop (the loop closes), as many at any loop length as
   // the 12 s default has per second; the drift per cycle is the speed
   const loop = opts.loop > 0 ? opts.loop : 12;
-  const cycles = Math.max(1, Math.round(opts.cycles ?? (K.cycles * loop) / 12));
-  const pace = Math.max(0, opts.speed ?? 1), speed = K.speed * pace;
+  const cycles = K.fire ? 1 : Math.max(1, Math.round(opts.cycles ?? (K.cycles * loop) / 12));
+  const pace = Math.max(0, opts.speed ?? 1), speed = K.fire ? 0 : K.speed * pace;
   const DIST_MAX = 1.5;   // frame heights the distance texture spans
   const amp = Math.min(Math.max(opts.amp ?? 1, 0), 2);
   const uniforms = {
     tImg: { value: photo }, tMap: { value: opts.maps.tex }, tFlow: { value: fieldTexture(f) },
-    tDist: { value: maskTexture(f.w, f.h, f.dist.map((d) => Math.min(1, d / DIST_MAX))) }, uDistMax: { value: DIST_MAX },
+    tDist: { value: maskTexture(f.w, f.h, f.dist.map((d) => Math.min(1, d / DIST_MAX)), f.glow, f.up) }, uDistMax: { value: DIST_MAX },
     uRes: { value: new THREE.Vector2(opts.width, opts.height) }, uT: { value: 0 },
     uDrift: { value: (speed * loop) / cycles }, uCycles: { value: cycles },
     // sideways sway about every 6 s, whole times per loop
-    uBillow: { value: K.billow * amp }, uSways: { value: Math.max(1, Math.round(loop / 6)) }, uShow: { value: opts.show ? 1 : 0 },
+    uBillow: { value: K.fire ? 0 : K.billow * amp }, uSways: { value: Math.max(1, Math.round(loop / 6)) }, uShow: { value: opts.show ? 1 : 0 },
     uPoolDrift: { value: (POOL.speed * pace * loop) / cycles }, uRing: { value: POOL.ring },
     // (still rings when the water is held: speed=0)
     uRings: { value: pace > 0 ? Math.max(1, Math.round((POOL.spread * pace * loop) / POOL.ring)) : 0 }, uChurn: { value: pace > 0 ? amp : 0 }, uChurnCycles: { value: Math.max(1, Math.round(loop / 12)) },
+    ...fireUniforms(K.fire ? f : null, pace, amp, loop),
   };
   const colorMat = new THREE.ShaderMaterial({ uniforms, vertexShader: QUAD_VS, fragmentShader: POUR_FS, depthTest: false, depthWrite: false });
   const dirMat = new THREE.ShaderMaterial({ uniforms, vertexShader: QUAD_VS, fragmentShader: POUR_DIR_FS, depthTest: false, depthWrite: false });
@@ -407,8 +619,10 @@ export function buildPour(renderer, opts) {
     renderer.render(scene, camera);
     quad.material = colorMat;
   }
-  const info = `${opts.kind} · moving ${Math.round(f.share * 100)}%${K.pool ? ` · pool ${Math.round(f.poolShare * 100)}%` : ''} · ${cycles} cycles`
+  const info = K.fire ? `fire · flame ${Math.round(f.share * 100)}% · ${f.turb < 0.5 ? 'calm' : 'lively'}`
+    + (f.share < K.minBody / 2 ? ' · found no flame: open shore=show, or press E and paint it green' : '')
+    : `${opts.kind} · moving ${Math.round(f.share * 100)}%${K.pool ? ` · pool ${Math.round(f.poolShare * 100)}%` : ''} · ${cycles} cycles`
     // (nothing found: say so, instead of a quietly still loop)
-    + (f.share + f.poolShare < 0.005 ? ` · found nothing that ${opts.kind === 'steam' ? 'rises' : 'falls'}: open shore=show, or press E and paint it green` : '');
+    + (f.share + f.poolShare < (K.minBody ? K.minBody / 2 : 0.005) ? ` · found nothing that ${K.way > 0 ? 'rises' : 'falls'}: open shore=show, or press E and paint it green` : '');
   return { scene, camera, count: 0, share: f.share, info, update: (t) => { uniforms.uT.value = t; }, renderDirection };
 }

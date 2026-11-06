@@ -17,7 +17,7 @@
 //   fps=30             export frame rate
 //   t=0.25             freeze at a loop phase (for stills)
 //   export=ascii,flow  render one loop of each listed mode and encode MP4s
-//   scene=auto|grass|water|sky|waterfall|steam
+//   scene=auto|grass|water|sky|waterfall|steam|fire
 //                      grass rebuilds the image from swaying strands; water
 //                      carries it along a flow field under travelling swell
 //                      (sea, rivers, anything that flows rather than sways);
@@ -28,6 +28,8 @@
 //                      runs in streaks down (or up) the frame, lighter than
 //                      around it, along those streaks, and below a waterfall
 //                      the pool or river it lands in; the rest stays still.
+//                      fire moves what is bright and flame-coloured: it rises
+//                      and flickers, and what it lights flickers with it.
 //                      auto never picks them: ask for them by name
 //                      A water scene with a sky above it drifts that sky too.
 //                      In water, set wind= to the way the water moves when it
@@ -61,7 +63,7 @@
 //                      cycles keep the drifting copies closer and the foam sharper
 //                      at the same speed; fewer show the restarts less. auto: 18,
 //                      or 6 for a sea seen from the shore
-//   speed=1            waterfall, steam: how fast it falls or rises
+//   speed=1            waterfall, steam, fire: how fast it falls or rises
 //                      water: swell speed multiplier (each wave is rounded to
 //                      whole cycles per loop, at least one, so very low
 //                      speeds stop slowing down)
@@ -148,8 +150,8 @@ const marks = marksImg ? marksOnGrid(cropTo(marksImg, crop), grid) : null;
 // the scene is judged on the sky as found; the marks only change what moves
 const foundSky = skyMode === 'off' ? null : skyMask(grid);
 const sky = marks && foundSky ? skyMask(grid, marks) : foundSky;
-const asked = ['grass', 'water', 'sky', 'waterfall', 'steam'].includes(q.get('scene')) ? q.get('scene') : null;
-const pours = asked === 'waterfall' || asked === 'steam';   // they read their own field (pour.js)
+const asked = ['grass', 'water', 'sky', 'waterfall', 'steam', 'fire'].includes(q.get('scene')) ? q.get('scene') : null;
+const pours = ['waterfall', 'steam', 'fire'].includes(asked);   // they read their own field (pour.js)
 const guess = asked ? null : classifyImage(image);
 let scene = asked ?? guess.kind;
 if (!asked && scene !== 'grass' && foundSky) {
@@ -164,11 +166,11 @@ if (!scene) {
       : `No sky found at the top of this image (it needs sky along most of the top edge), so nothing was generated.`)
     : `This doesn't look like grass, water or sky (green ${pct(guess.shares.grass)}, water ${pct(guess.shares.water)} of the frame), so nothing was generated. `
       + `If it is one of them, open it with <code>&scene=grass</code>, <code>&scene=water</code> or <code>&scene=sky</code>`
-      + ` (a waterfall: <code>&scene=waterfall</code>; steam or smoke: <code>&scene=steam</code>).`;
+      + ` (a waterfall: <code>&scene=waterfall</code>; steam or smoke: <code>&scene=steam</code>; flames: <code>&scene=fire</code>).`;
   document.title = 'failed';   // what an export waits for
   throw new Error(`unsupported image: ${imgPath}`);
 }
-const flowing = scene !== 'grass';   // water and sky run on the water shader, waterfalls and steam on their own
+const flowing = scene !== 'grass';   // water and sky run on the water shader, waterfalls, steam and fire on their own
 const LOOP = num('loop', 12), FPS = num('fps', 30);
 const NAME = imgPath.split('/').pop().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-') + (cropped ? `-${W}x${H}` : '') + (flowing ? `-${scene}` : '');
 const MODES = ['ascii', 'flow'];

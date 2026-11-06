@@ -79,6 +79,19 @@ You get two versions of every loop: `flow`, the photo itself in motion, and `asc
   </tr>
 </table>
 
+<p align="center"><sub>Fire, found by its colour (<code>scene=fire</code>):</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/readme/gallery/campfire.webp" width="100%" alt="A campfire on a pebble shore at dusk, flames licking up off the logs"></td>
+    <td width="50%"><img src="./assets/readme/gallery/candle.webp" width="100%" alt="A candle on a wooden table beside a mug and a book, its flame wavering"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Campfire</b><br><sub>tongues of flame rise and break off, the logs stay put</sub></td>
+    <td align="center"><b>Candle</b><br><sub>a small flame, so it only wavers</sub></td>
+  </tr>
+</table>
+
 <br>
 
 <img src="./assets/readme/en/section-start.svg" width="100%" alt="04 Get started">
@@ -136,7 +149,7 @@ Everything goes in the URL.
 | `focus=0.5,0.3` | which part of the photo to keep when cropping |
 | `mode=flow` | start in the plain view instead of ASCII |
 | `export=ascii,flow` | save one or both versions as video |
-| `scene=water` | override the guess when it's wrong (also `grass`, `sky`, and `waterfall` or `steam`, which it never guesses) |
+| `scene=water` | override the guess when it's wrong (also `grass`, `sky`, and `waterfall`, `steam` or `fire`, which it never guesses) |
 | `amp=0.6` | less motion; `amp=1.3` for more |
 | `speed=1` | how fast the waves run (water); for clouds, `clouds=1` |
 | `sky=show` | tint what it thinks is sky in blue; `sky=off` to ignore it (over water it then moves with the sea) |

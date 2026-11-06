@@ -1,6 +1,6 @@
 ---
 name: asciigraph
-description: Bring a still photo to life as a seamless looping video and ASCII animation, moving each part the way it should: sea and rivers flow and waves roll ashore, waterfalls pour, steam and smoke rise, clouds drift, grass and crops sway, sand and rock stay still. Exports MP4, and GIF or WebP for sharing. Use when someone asks to animate a still image, make a photo "move" or "breathe", make a cinemagraph or a live/animated wallpaper, turn a picture into an ASCII animation or ASCII video loop, make an animated banner for a GitHub README or profile, or make water, a waterfall, steam, smoke, sky, grass, fur, hair, wheat or brush strokes move.
+description: Bring a still photo to life as a seamless looping video and ASCII animation, moving each part the way it should: sea and rivers flow and waves roll ashore, waterfalls pour, steam and smoke rise, flames flicker, clouds drift, grass and crops sway, sand and rock stay still. Exports MP4, and GIF or WebP for sharing. Use when someone asks to animate a still image, make a photo "move" or "breathe", make a cinemagraph or a live/animated wallpaper, turn a picture into an ASCII animation or ASCII video loop, make an animated banner for a GitHub README or profile, or make water, a waterfall, steam, smoke, fire, a candle, a fireplace, sky, grass, fur, hair, wheat or brush strokes move.
 ---
 
 # asciigraph
@@ -25,10 +25,10 @@ This file is the workflow. Read these when the step calls for them:
 
 1. **Install once:** `npm install`.
 2. **Look at the photo first** and say whether it suits the effect, before spending a render:
-   - Good: sea, surf, rivers, lakes with a breeze, skies with clouds, grass, crops, reeds, fur, hair, painterly brushwork, waterfalls, steam and smoke against a darker background.
+   - Good: sea, surf, rivers, lakes with a breeze, skies with clouds, grass, crops, reeds, fur, hair, painterly brushwork, waterfalls, steam and smoke against a darker background, candles, campfires and fireplaces.
    - Poor: hard-edged subjects (buildings, faces, text) smear; say so.
    - The default `scene=auto` picks grass, water or sky from the colours and refuses anything else. Fur, hair, paintings or other non-green strands need `scene=grass`.
-   - Waterfalls need `scene=waterfall`; steam, smoke and rising mist need `scene=steam`. Auto never picks these two. Only the falling water or the plume moves, along its own streaks, plus the pool or river a fall lands in; rock and everything else stays still.
+   - Waterfalls need `scene=waterfall`; steam, smoke and rising mist need `scene=steam`. Flames need `scene=fire`. Auto never picks these three. Only the falling water or the plume moves, along its own streaks, plus the pool or river a fall lands in; rock and everything else stays still. Fire moves the flames and makes the room they light flicker with them; candle wax and sunsets read as flame, so paint them red.
 3. **Start the server** in the background: `npm start` (port 5177; set `PORT` to change it).
 4. **Preview stills** in a browser tab you control, never one the user is watching: `http://localhost:5177/?img=input/NAME&t=0.25`. Add `&mode=flow` to see it without the ASCII. Then check what it decided:
    - Water with a shore: open `&shore=show`. The red tint is what stays still and should cover dry land only. If it covers water, use `&shore=off`.
