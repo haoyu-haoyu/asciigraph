@@ -149,7 +149,7 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `focus=0.5,0.3` | 裁剪时保留照片的哪一部分 |
 | `mode=flow` | 一打开就是普通画面，不是 ASCII |
 | `export=ascii,flow` | 把其中一个或两个版本存成视频 |
-| `scene=water` | 它认错照片类型时手动指定（还有 `grass`、`sky`，以及它不会自己选的 `waterfall` 瀑布、`steam` 蒸汽、`fire` 火焰） |
+| `scene=water` | 它认错照片类型时手动指定（还有 `grass`、`sky`，以及它不会自己选的 `waterfall` 瀑布、`steam` 蒸汽、`fire` 火焰、`twinkle` 夜里闪烁的星星和灯光） |
 | `amp=0.6` | 动得少一点；`amp=1.3` 动得多一点 |
 | `speed=1` | 海浪的速度（水）；云的速度用 `clouds=1` |
 | `sky=show` | 用蓝色标出它认为是天空的地方；`sky=off` 不再单独处理天空（有海时天空会跟着海一起动） |

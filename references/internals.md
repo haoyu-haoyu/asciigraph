@@ -14,8 +14,9 @@ Only needed when changing the code. After any change, re-run the Checks in SKILL
 | `src/water.js` | water and sky scenes: perspective swell, the waves breaking on land, drifting clouds, horizon haze |
 | `src/field.js` | grass scene: the swaying strands |
 | `src/pour.js` | waterfall, steam and fire scenes: what runs in streaks down or up the frame (or, for fire, what is flame-coloured) and the drift along them, the pool below a fall, a fire's flicker and the light it throws |
+| `src/twinkle.js` | twinkle scene: finds small bright points against a darker surround, grows each over its own light, and dims and brightens each at its own pace with a glow |
 | `src/ascii.js`, `src/font5x7.js`, `src/post.js` | turning a frame into stroke glyphs |
-| `src/marks.js`, `src/editor.js` | painted marks: read onto the grid, applied in `sky.js` and `shore.js` (`field.js` for grass, `pour.js` for waterfalls, steam and fire); the `E` brush |
+| `src/marks.js`, `src/editor.js` | painted marks: read onto the grid, applied in `sky.js` and `shore.js` (`field.js` for grass, `pour.js` for waterfalls, steam and fire, `twinkle.js` for twinkle); the `E` brush |
 | `scripts/check-loop.mjs` | the seamless check |
 
 ## Changing the look

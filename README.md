@@ -149,7 +149,7 @@ Everything goes in the URL.
 | `focus=0.5,0.3` | which part of the photo to keep when cropping |
 | `mode=flow` | start in the plain view instead of ASCII |
 | `export=ascii,flow` | save one or both versions as video |
-| `scene=water` | override the guess when it's wrong (also `grass`, `sky`, and `waterfall`, `steam` or `fire`, which it never guesses) |
+| `scene=water` | override the guess when it's wrong (also `grass`, `sky`, and `waterfall`, `steam`, `fire` or `twinkle` for stars and lights at night, which it never guesses) |
 | `amp=0.6` | less motion; `amp=1.3` for more |
 | `speed=1` | how fast the waves run (water); for clouds, `clouds=1` |
 | `sky=show` | tint what it thinks is sky in blue; `sky=off` to ignore it (over water it then moves with the sea) |

@@ -20,8 +20,8 @@ Everything goes in the page's URL: `http://localhost:5177/?img=input/NAME&option
 
 | Option | Default | What it does |
 |---|---|---|
-| `scene` | `auto` | `grass`, `water`, `sky`, `waterfall`, `steam` (use it for smoke and rising mist too) or `fire` (candles, campfires, fireplaces). `auto` picks grass, water or sky from the colours and refuses anything that is none of them; it never picks `waterfall`, `steam` or `fire`, so ask for those by name |
-| `shore` | `auto` | water: keep dry land still. `off` makes it all water; `show` tints the still part red (in `waterfall`, `steam` and `fire` too) |
+| `scene` | `auto` | `grass`, `water`, `sky`, `waterfall`, `steam` (use it for smoke and rising mist too), `fire` (candles, campfires, fireplaces) or `twinkle` (stars, lights at night). `auto` picks grass, water or sky from the colours and refuses anything that is none of them; it never picks `waterfall`, `steam`, `fire` or `twinkle`, so ask for those by name |
+| `shore` | `auto` | water: keep dry land still. `off` makes it all water; `show` tints the still part red (in `waterfall`, `steam` and `fire` too; in `twinkle` it dims the photo and paints the points it found green) |
 | `marks` | — | a PNG of hand-painted corrections (see below). `E` in the page paints one and adds it for you |
 | `sky` | `auto` | drift the clouds. `show` tints what it reads as sky blue. `off` ignores the sky altogether: in a water scene it then moves with the water, and a sky scene can't run without it (`scene=sky&sky=off` is refused) |
 
@@ -36,12 +36,14 @@ What `waterfall` and `steam` move: only what runs in streaks down the frame (a w
 
 What `fire` moves: what is bright, flame-coloured (red through yellow, or a white-hot core) and lighter than what is around it. It moves the way real flames do: the base holds at the fuel, read from the photo; higher up the flame is drawn new each moment, in the photo's own flame colours and within its shape, as thin tongues that rise, curl and break off at the tips. A wide fire also swells and shrinks about once a second, and its brightness wavers. A narrow, tall flame (a candle) is calm: it only sways and flickers gently. It lights the room around it: everything within about a quarter of the frame brightens and dims with it. Anything as bright and warm as a flame reads as one: candle wax lit from above, a sunset, a lamp; so can a near-white highlight brighter than its surroundings (a window, white paper), since a flame's white-hot core counts. Paint those red. Red keeps them from rising, but they still brighten and dim in the fire's light. `wind` and `shore=off` do nothing here.
 
+What `twinkle` moves: small bright points that stand out from a darker surround, such as stars, distant street and window lights, and fairy-light bulbs. A bulb counts as a whole, glass included, not just its brightest pixel. Each point dims and brightens at its own pace, and a soft glow around it swells as it brightens. The bigger and brighter a point, the more it changes; the faintest stars change about a third as much. Large lit areas (a window, the moon, a lamp shade) and long thin glints (a wire, an edge) are left out. Leaves or cloth catching the light can still count: paint them red. Nothing else moves. `wind` and `shore=off` do nothing here.
+
 ## Marks
 
 A marks file overrides what the masks found, wherever it is painted:
 
 - **Red** (255, 0, 0): keep this still. No swell, no cloud drift, no grass sway, and on grass the light is held too. In `fire`, a red part still brightens and dims in the fire's light; it only stops rising.
-- **Green** (0, 255, 0): this is water; let it move, even if it was read as land or sky. In `waterfall` and `steam`, green is more of the fall or the plume, moving the way the streaks around it run; in `fire`, it is more of the flame. A grass scene already moves everywhere, so it ignores green.
+- **Green** (0, 255, 0): this is water; let it move, even if it was read as land or sky. In `waterfall` and `steam`, green is more of the fall or the plume, moving the way the streaks around it run; in `fire`, it is more of the flame; in `twinkle`, every green pixel is a point that twinkles, and red is never one. A grass scene already moves everywhere, so it ignores green.
 - **Transparent:** leave it to the masks. Alpha is how strongly a mark applies, so soft edges blend.
 
 The file has the shape of the whole, uncropped photo (any resolution), so it still fits after `width`, `height` or `focus` change. The scene guess ignores the marks: they only change what moves.
@@ -61,11 +63,11 @@ const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
 
 | Option | Default | Applies to | What it does |
 |---|---|---|---|
-| `amp` | 1 | all | how far things move. 0.6 is calm, 1.3–1.5 lively (water stops growing at 1.4). Waterfall and steam: how much the strands sway sideways and the pool churns; `speed` sets how fast they run. Fire: how far the flames sway and stretch, how much they flicker, and how strongly the room's light follows |
+| `amp` | 1 | all | how far things move. 0.6 is calm, 1.3–1.5 lively (water stops growing at 1.4). Waterfall and steam: how much the strands sway sideways and the pool churns; `speed` sets how fast they run. Fire: how far the flames sway and stretch, how much they flicker, and how strongly the room's light follows. Twinkle: how deep the points dim and how bright their glow |
 | `wind` | auto | grass, water | direction in degrees (0 = right, 90 = up). Grass: the way strands lean. Water: overrides the wave heading it reads from the photo |
 | `light` | 130 | all | where the light comes from, in degrees (130 = upper left, 45 = upper right, 270 = below) |
 | `density` | 1 | grass | strand density; raise it when strands look fat or sparse for the texture |
-| `speed` | 1 | water, waterfall, steam, fire | water: how fast the waves run. Waterfall and steam: how fast it falls or rises, and the pool's drift and ripples. Fire: how fast the tongues rise, puff and waver (0 holds them, the room's light included) |
+| `speed` | 1 | water, waterfall, steam, fire, twinkle | water: how fast the waves run. Waterfall and steam: how fast it falls or rises, and the pool's drift and ripples. Fire: how fast the tongues rise, puff and waver (0 holds them, the room's light included). Twinkle: how fast the points twinkle (0 holds them) |
 | `wavelength` | from the photo | water | wave size in frame heights, when the photo's own reads wrong |
 | `churn` | from the photo | water | how much the surface churns in place (surf) versus drifting (a river) |
 | `drift` | from the photo | water | how fast the surface texture drifts |

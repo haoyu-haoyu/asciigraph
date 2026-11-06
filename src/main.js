@@ -17,7 +17,7 @@
 //   fps=30             export frame rate
 //   t=0.25             freeze at a loop phase (for stills)
 //   export=ascii,flow  render one loop of each listed mode and encode MP4s
-//   scene=auto|grass|water|sky|waterfall|steam|fire
+//   scene=auto|grass|water|sky|waterfall|steam|fire|twinkle
 //                      grass rebuilds the image from swaying strands; water
 //                      carries it along a flow field under travelling swell
 //                      (sea, rivers, anything that flows rather than sways);
@@ -30,6 +30,9 @@
 //                      the pool or river it lands in; the rest stays still.
 //                      fire moves what is bright and flame-coloured: it rises
 //                      and flickers, and what it lights flickers with it.
+//                      twinkle: small lights on a dark surround (stars, a
+//                      city at night, fairy lights) dim and brighten each
+//                      on its own; all else stays still.
 //                      auto never picks them: ask for them by name
 //                      A water scene with a sky above it drifts that sky too.
 //                      In water, set wind= to the way the water moves when it
@@ -63,7 +66,7 @@
 //                      cycles keep the drifting copies closer and the foam sharper
 //                      at the same speed; fewer show the restarts less. auto: 18,
 //                      or 6 for a sea seen from the shore
-//   speed=1            waterfall, steam, fire: how fast it falls or rises
+//   speed=1            waterfall, steam, fire, twinkle: how fast it falls, rises or twinkles
 //                      water: swell speed multiplier (each wave is rounded to
 //                      whole cycles per loop, at least one, so very low
 //                      speeds stop slowing down)
@@ -73,6 +76,7 @@ import { loadImage, deriveMaps } from './maps.js';
 import { buildField } from './field.js';
 import { buildWater } from './water.js';
 import { buildPour } from './pour.js';
+import { buildTwinkle } from './twinkle.js';
 import { analyseWater } from './waterstats.js';
 import { classifyImage } from './classify.js';
 import { readGrid } from './masks.js';
@@ -150,7 +154,7 @@ const marks = marksImg ? marksOnGrid(cropTo(marksImg, crop), grid) : null;
 // the scene is judged on the sky as found; the marks only change what moves
 const foundSky = skyMode === 'off' ? null : skyMask(grid);
 const sky = marks && foundSky ? skyMask(grid, marks) : foundSky;
-const asked = ['grass', 'water', 'sky', 'waterfall', 'steam', 'fire'].includes(q.get('scene')) ? q.get('scene') : null;
+const asked = ['grass', 'water', 'sky', 'waterfall', 'steam', 'fire', 'twinkle'].includes(q.get('scene')) ? q.get('scene') : null;
 const pours = ['waterfall', 'steam', 'fire'].includes(asked);   // they read their own field (pour.js)
 const guess = asked ? null : classifyImage(image);
 let scene = asked ?? guess.kind;
@@ -166,11 +170,11 @@ if (!scene) {
       : `No sky found at the top of this image (it needs sky along most of the top edge), so nothing was generated.`)
     : `This doesn't look like grass, water or sky (green ${pct(guess.shares.grass)}, water ${pct(guess.shares.water)} of the frame), so nothing was generated. `
       + `If it is one of them, open it with <code>&scene=grass</code>, <code>&scene=water</code> or <code>&scene=sky</code>`
-      + ` (a waterfall: <code>&scene=waterfall</code>; steam or smoke: <code>&scene=steam</code>; flames: <code>&scene=fire</code>).`;
+      + ` (a waterfall: <code>&scene=waterfall</code>; steam or smoke: <code>&scene=steam</code>; flames: <code>&scene=fire</code>; stars or lights at night: <code>&scene=twinkle</code>).`;
   document.title = 'failed';   // what an export waits for
   throw new Error(`unsupported image: ${imgPath}`);
 }
-const flowing = scene !== 'grass';   // water and sky run on the water shader, waterfalls, steam and fire on their own
+const flowing = scene !== 'grass';   // water and sky run on the water shader, waterfalls, steam, fire and twinkle on their own
 const LOOP = num('loop', 12), FPS = num('fps', 30);
 const NAME = imgPath.split('/').pop().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]/gi, '-') + (cropped ? `-${W}x${H}` : '') + (flowing ? `-${scene}` : '');
 const MODES = ['ascii', 'flow'];
@@ -182,9 +186,12 @@ renderer.setPixelRatio(1);
 renderer.setSize(W, H, false);
 
 const common = { image, maps, width: W, height: H, wind, light: rad(num('light', 130)), amp: num('amp', 1) };
-const field = pours
+const show = q.get('shore')?.trim().toLowerCase() === 'show';
+const field = scene === 'twinkle'
+  ? buildTwinkle(renderer, { ...common, speed: num('speed', 1), loop: LOOP, marks, grid, show })
+  : pours
   ? buildPour(renderer, { ...common, kind: scene, speed: num('speed', 1), cycles: num('cycles', null), loop: LOOP,
-      marksImg: marksImg ? cropTo(marksImg, crop) : null, show: q.get('shore')?.trim().toLowerCase() === 'show' })
+      marksImg: marksImg ? cropTo(marksImg, crop) : null, show })
   : flowing
   ? buildWater(renderer, {
       ...common, windGiven, stats: analyseWater(image, sky), churn: num('churn', null), drift: num('drift', null),

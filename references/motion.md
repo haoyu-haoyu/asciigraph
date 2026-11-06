@@ -58,6 +58,17 @@ Ask for it with `scene=fire`; auto never picks it. It finds flames by colour: br
 | Candle wax, a lamp shade, anything the flame lights brightly | stays still (it still glows with the flame) | it rises like flame: lit wax is as bright and warm as the flame itself | paint it red. A candle almost always needs this below the flame's foot |
 | Sunset, warm lamps, lit windows elsewhere | stay still | a bright orange patch rises like a flame | paint it red (a small lamp flickering along is fine to keep) |
 
+## Twinkle
+
+Ask for it with `scene=twinkle`; auto never picks it. It finds small bright points with a darker surround (stars, distant city lights, fairy-light bulbs) and makes each one dim and brighten at its own pace, with a soft glow around it that grows as it brightens. Check `shore=show` first: the photo is dimmed and every point found is painted green.
+
+| Part | Should | Looks wrong when | Fix |
+|---|---|---|---|
+| Stars, bulbs, distant lights | each at its own pace; the big, bright ones dim and flare the most, faint ones only a little; a bulb dims as a whole | they pulse together, or barely change | `amp` for how deep (0.6 subtle, 1.3 lively), `speed` for how fast (0.5 slower) |
+| Glow | a soft halo that swells as the point brightens, a few characters wide in the ASCII | a hard ring, or none at all | `amp` scales the glow with the twinkle |
+| Everything else (sky, buildings, the lit room) | stays still | a lit window, a leaf or a white edge flickers | paint it red |
+| A light that is missed | twinkles too | it stays still | paint it green: green always counts as a point |
+
 ## Sky
 
 | Part | Should | Looks wrong when | Fix |
