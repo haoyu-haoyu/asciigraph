@@ -1,11 +1,11 @@
 ---
 name: asciigraph
-description: Bring a still photo to life as a seamless looping video and ASCII animation, moving each part the way it should: sea and rivers flow and waves roll ashore, waterfalls pour, steam and smoke rise, flames flicker, clouds drift, grass and crops sway, sand and rock stay still. Exports MP4, and GIF or WebP for sharing. Use when someone asks to animate a still image, make a photo "move" or "breathe", make a cinemagraph or a live/animated wallpaper, turn a picture into an ASCII animation or ASCII video loop, make an animated banner for a GitHub README or profile, or make water, a waterfall, steam, smoke, fire, a candle, a fireplace, stars, city lights at night, fairy lights, sky, grass, fur, hair, wheat or brush strokes move.
+description: Bring a still photo to life as a seamless looping video and ASCII animation, moving each part the way it should: sea and rivers flow and waves roll ashore, waterfalls pour, steam and smoke rise, flames flicker, clouds drift, grass and crops sway, sand and rock stay still. Exports MP4, and GIF or WebP for sharing. Use when someone asks to animate a still image, make a photo "move" or "breathe", make a cinemagraph or a live/animated wallpaper, turn a picture into an ASCII animation or ASCII video loop, make an animated banner for a GitHub README or profile, or make water, a waterfall, steam, smoke, fire, a candle, a fireplace, stars, city lights at night, fairy lights, sky, grass, fur, hair, wheat or brush strokes move. Also adds looping ambient sound, makes iPhone Live Photo wallpapers, plays loops as coloured text in a terminal, and embeds them live in a web page.
 ---
 
 # asciigraph
 
-Turns one image into a seamless loop. Water gets a travelling swell that breaks white on the shore, skies get drifting clouds and horizon haze, grass and other strand textures sway, and land stays still. Every loop comes in two versions: `ascii` (the motion drawn in stroke characters that turn with it) and `flow` (the photo itself in motion).
+Turns one image into a seamless loop. Water gets a travelling swell that breaks white on the shore, skies get drifting clouds and horizon haze, grass and other strand textures sway, waterfalls pour, steam and smoke rise, flames flicker and light the room, stars and night lights twinkle, and land stays still. Every loop comes in two versions: `ascii` (the motion drawn in stroke characters that turn with it) and `flow` (the photo itself in motion).
 
 This file is the workflow. Read these when the step calls for them:
 
@@ -18,8 +18,9 @@ This file is the workflow. Read these when the step calls for them:
 
 - The repo folder is this skill's folder (the one holding this file). Run every command from there.
 - The user's photo goes in `input/` (gitignored). Copy it there; don't move or edit their original. The page can only open files inside the repo folder.
-- Results land in `out/`: `out/TAG.mp4` and, next to it, the folder `out/TAG/` with every frame as `f_0000.png`… `TAG` is the image's name, then the size if cropped, the scene for water or sky, and the mode: `beach-1179x2556-water-ascii`.
+- Results land in `out/`: `out/TAG.mp4` and, next to it, the folder `out/TAG/` with every frame as `f_0000.png`… `TAG` is the image's name, then the size if cropped, the scene unless it is grass, and the mode (the MCP server adds a short run id before the mode): `beach-1180x2556-water-ascii`.
 - Built-in sample: `examples/beach.png` (opened when `img` is left out).
+- **The command line does steps 3 and 5 for you** when you can't keep a browser tab in front: `node bin/asciigraph.mjs input/NAME --mode both --keep-frames [--scene … --size … --set key=value …]` renders headless in the installed Chrome and prints the scene and the MP4 paths. A refused photo exits non-zero with the page's reason. `--keep-frames` keeps `out/TAG/` for the checks; delete those folders afterwards, they are large. Stills for step 4 still need the page.
 
 ## Workflow
 
@@ -36,7 +37,7 @@ This file is the workflow. Read these when the step calls for them:
    - A sky: open `&sky=show`. The blue tint should cover sky only, down to the horizon or skyline. If it covers sea, sand or buildings, use `&sky=off`. That ignores the sky entirely: over water the sky then moves with the sea, and the scene guess is made without it.
    - Grass: wind direction (`wind`), light direction (`light`), strand size (`density`). See parameters.md.
    - Anything in the wrong region (a rock that swims, a cliff that breathes, a sea read as land): fix it with marks. Red keeps still, green lets it move. Either ask the user to press `E` in the page and paint, or make the marks file yourself (parameters.md, Marks). Then add `&marks=input/NAME-marks.png` to every URL that follows, export included.
-   - Crops (wallpapers, banners): set `width` and `height` to the final size and move the frame with `focus`.
+   - Crops (wallpapers, banners): `size=iphone` (or `android`, `mac`, `4k`… see parameters.md), or `width` and `height` for any other size; move the frame with `focus`. Preview a big size smaller with `size=4k&width=960`: same shape, a quarter of the width.
 5. **Export:** `?img=input/NAME&export=ascii,flow` plus the tuning options. Keep that tab in front until the title reads `done` or `failed` (a refused image also reads `failed`, with the reason on the page). A background or hidden tab renders several times slower. A 12 s loop at 1080 px wide takes about 10 minutes.
 6. **Check it** (below), convert it if it's going somewhere other than a video player (sharing.md), then report the file paths and anything that looked weak.
 
@@ -62,11 +63,17 @@ Run on every export. Get the bundled ffmpeg with `FF=$(node -p "require('ffmpeg-
 ## Common requests
 
 - **Phone or desktop wallpaper:**
-  - Set `width` and `height` to the screen's native resolution, e.g. 1179×2556 (iPhone 15 Pro), 1290×2796 (iPhone 15 Pro Max), 3840×2160 (4K desktop).
+  - Use `size=` for the device (`iphone`, `iphone-max`, `android`, `ipad`, `mac`, `1080p`, `1440p`, `4k`), or `width` and `height` for its exact screen.
   - Choose `focus` from stills, then export `flow` (and `ascii` if they want it).
+  - Tell them how to set it on their device (sharing.md, Wallpapers). An iPhone can't loop a video as wallpaper; say so before rendering one.
   - Never render small and upscale: glyphs are 5×7 px and blur.
 - **GitHub README or profile banner:** render at the size it will be shown, wide and short (e.g. 840×340), then convert. ASCII becomes a GIF; a plain flow loop becomes a WebP. See sharing.md for the exact commands and size budgets.
 - **"Make it calmer / livelier":** `amp` 0.6–1.5. For water, `speed` changes how fast the waves run. For skies, `clouds` sets the cloud speed and `cloud` the direction. A longer `loop` adds no variety: every motion repeats a whole number of times per loop, so it only slows things down.
+- **With sound:** add `sound=on` to the export (or `--sound`). It is made from noise to match the scene, not recorded.
+- **iPhone wallpaper:** an iPhone can't loop a video, but takes a Live Photo, which plays briefly as the phone wakes. On a Mac: `node bin/asciigraph.mjs live input/NAME` (renders at `size=iphone`, then writes `out/NAME….heic` and `.mov`; `--seconds` sets how long it plays, 3 by default). Both files must reach the phone together (AirDrop), then Settings → Wallpaper. See sharing.md.
+- **In a terminal, or for curl:** `node bin/asciigraph.mjs play input/NAME` plays it as coloured text; `stream` serves it to `curl http://localhost:7777`. See sharing.md.
+- **On their own website:** the `<living-photo>` element (sharing.md, On a web page) moves it live with no video file.
+- **No install at all:** `demo.html` (served by `npm start`, or as static files) takes a dropped photo and downloads the MP4, all in the browser.
 - **It guessed the scene wrong:** set `scene=water|grass|sky`. If it refuses the image, the page says what it measured. Only override when the photo really is one of them.
 
 ## Known limits

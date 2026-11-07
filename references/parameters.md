@@ -7,8 +7,10 @@ Everything goes in the page's URL: `http://localhost:5177/?img=input/NAME&option
 | Option | Default | What it does |
 |---|---|---|
 | `img` | `examples/beach.png` | the image, as a path inside the repo folder |
+| `size` | — | a wallpaper size by name: `iphone` 1180×2556, `iphone-max` 1290×2796, `android` 1080×2400, `ipad` 1640×2360, `mac` 2880×1864, `1080p`, `1440p`, `4k`. Crops the photo to that shape. With `width` too, it keeps the shape at that width (a quicker preview); `height` overrides it |
 | `width` | 1080 | output width in px (rounded to even) |
 | `height` | follows the image | set it, together with `width`, to crop the image to that shape |
+| `tag` | the photo's name | name the exports `out/TAG-MODE.mp4` instead (the batch uses this so it never overwrites a real export) |
 | `focus` | `0.5,0.5` | which part to keep when cropping: across, then down, each 0–1 |
 | `mode` | `ascii` | what the page shows: `ascii` or `flow` (`M` toggles, space pauses) |
 | `t` | — | freeze at this point of the loop, 0–1; use it for stills |
@@ -63,7 +65,7 @@ const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
 
 | Option | Default | Applies to | What it does |
 |---|---|---|---|
-| `amp` | 1 | all | how far things move. 0.6 is calm, 1.3–1.5 lively (water stops growing at 1.4). Waterfall and steam: how much the strands sway sideways and the pool churns; `speed` sets how fast they run. Fire: how far the flames sway and stretch, how much they flicker, and how strongly the room's light follows. Twinkle: how deep the points dim and how bright their glow |
+| `amp` | 1 | all | how far things move. 0.6 is calm, 1.3–1.5 lively (water stops growing at 1.4). Waterfall and steam: how much the strands sway sideways and the pool churns; `speed` sets how fast they run. Fire: how far the flames sway and stretch, how much they flicker, and how strongly the room's light follows. Twinkle: how deep the points dim and how bright their glow. |
 | `wind` | auto | grass, water | direction in degrees (0 = right, 90 = up). Grass: the way strands lean. Water: overrides the wave heading it reads from the photo |
 | `light` | 130 | all | where the light comes from, in degrees (130 = upper left, 45 = upper right, 270 = below) |
 | `density` | 1 | grass | strand density; raise it when strands look fat or sparse for the texture |
@@ -78,11 +80,17 @@ const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
 
 The water reads its heading from the photo's own waves. When the photo shows a sea horizon, waves come in from it in perspective: smaller and slower far off, breaking white where they reach land. Without a horizon, they head onshore if it found a shore, and otherwise along the photo's streaks (or `wind`, when given).
 
+## Sound (any scene)
+
+| Option | Default | What it does |
+|---|---|---|
+| `sound` | — | `on`: the export carries the scene's own sound, one loop long, made from noise (surf, wind, a waterfall's roar, steam's hiss, a fire's crackle, crickets for `twinkle`). In the page, `S` plays it |
+
 ## Sizes worth knowing
 
 | Target | `width` × `height` |
 |---|---|
-| iPhone 15 / 15 Pro | 1179 × 2556 |
+| iPhone 15 / 15 Pro | 1180 × 2556 (the screen is 1179; video needs even sizes) |
 | iPhone 15 Plus / Pro Max | 1290 × 2796 |
 | Common Android phone | 1080 × 2400 |
 | 1440p desktop | 2560 × 1440 |

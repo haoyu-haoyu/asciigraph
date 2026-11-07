@@ -56,6 +56,35 @@ Dense, fast-changing ASCII (a whole field of swaying rice) barely compresses: ev
 
 To shrink one, in this order: lower fps (15) → crop to a smaller window → fewer colours (96, then 64; watch for banding) → a calmer scene or lower `amp`. Aim for under ~10 MB per image so a page loads in reasonable time.
 
+## Wallpapers
+
+Export at the screen's size (`size=`, parameters.md) and hand over the MP4 as it is: wallpaper apps play video, and the loop is seamless, so it repeats with no jump.
+
+| Device | How it plays | What to tell them |
+|---|---|---|
+| Windows | **Wallpaper Engine** (Steam) or **Lively Wallpaper** (free) | Wallpaper Engine: create a wallpaper from the MP4 (Workshop uploads accept only MP4). If it hitches where the loop restarts, set its video loading to load into memory |
+| Android | a video live-wallpaper app; some phones set a video on the lock screen themselves | Samsung lock screens take a video of up to 15 s: keep `loop` at 15 or below |
+| Mac | no built-in way: a video wallpaper app | 2880×1864 is a 15" MacBook Air; use the screen's own size for others |
+| iPhone, iPad | can't loop a video as wallpaper; a Live Photo plays briefly as the phone wakes | on a Mac, `node bin/asciigraph.mjs live input/NAME` makes one (below). Say up front that it plays once on waking, not on repeat |
+
+A 4K loop takes about four times as long to render as 1080p. Preview it at `width=960` first.
+
+### Live Photo (iPhone)
+
+`node bin/asciigraph.mjs live input/NAME [--size iphone-max] [--seconds 3]` renders the loop (at `size=iphone` unless told otherwise) and writes a pair to `out/`: `NAME….heic` (the first frame) and `NAME….mov` (the first few seconds), sharing an identifier so Photos joins them into one Live Photo. It also takes an MP4 already made. macOS only: it uses AVFoundation through `swift`.
+
+Tell them: send both files to the phone together (AirDrop them in one go, or import both into Photos on the Mac and let iCloud sync), open it in Photos to check it moves, then Settings → Wallpaper → Add New Wallpaper → Photos. iOS only plays it when the phone wakes. Whether iOS accepts a given Live Photo for the lock screen is iOS's call: it sometimes refuses one with "motion not available"; a shorter `--seconds` is the thing to try.
+
+## Terminal and curl
+
+- `node bin/asciigraph.mjs play input/NAME` renders a small flow loop and plays it as coloured text in the terminal until Ctrl-C. `--style ascii` draws characters instead of half-blocks; `--cols` sets the width.
+- `node bin/asciigraph.mjs stream input/NAME` serves it: `curl http://localhost:7777` plays it in any terminal that shows 24-bit or 256 colours. It listens on 127.0.0.1 only; `--host 0.0.0.0` opens it to the network, so ask first.
+- Both also take an MP4 already made.
+
+## On a web page
+
+`src/element.js` defines `<living-photo>`, which renders the photo live in the page (WebGL), so no video is downloaded. The page needs an import map for `three` and loads the element as a module; README.md has the snippet and `embed.html` an example. Photos from another site must allow CORS. Each element is one WebGL context; browsers allow about 16 at once, so keep it to a few per page.
+
 ## GitHub README
 
 - GitHub strips scripts, canvas, iframes and styles, so the page can't animate live. A GIF, animated WebP or animated SVG in the repo is the way.

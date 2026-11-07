@@ -1,0 +1,102 @@
+{
+  "about": "Photos every change should still handle. expect: the scene the guess should pick (scene unset), or, with scene set, that it renders. Photos under input/ aren't in the repo (input/ is ignored): add your own there and list them here; missing ones are skipped.",
+  "photos": [
+    {
+      "photo": "examples/beach.png",
+      "expect": "water"
+    },
+    {
+      "photo": "examples/grass.png",
+      "expect": "grass"
+    },
+    {
+      "photo": "input/golden-rice.png",
+      "expect": "grass"
+    },
+    {
+      "photo": "input/cloudscape.png",
+      "expect": "sky"
+    },
+    {
+      "photo": "input/coast-sky.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/curved-bay.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/green-cove.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/lake-shore.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/river-sky.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/rocky-coast.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/sun-glint.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/sunset-sea.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/white-sand.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/mountain-stream.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/muddy-river.png",
+      "expect": "water"
+    },
+    {
+      "photo": "input/waterfall-tall.png",
+      "scene": "waterfall"
+    },
+    {
+      "photo": "input/waterfall-wide.png",
+      "scene": "waterfall"
+    },
+    {
+      "photo": "input/steam-cup.png",
+      "scene": "steam",
+      "marks": "input/steam-cup-marks.png"
+    },
+    {
+      "photo": "input/campfire.png",
+      "scene": "fire"
+    },
+    {
+      "photo": "input/candle.png",
+      "scene": "fire"
+    },
+    {
+      "photo": "input/fireplace.png",
+      "scene": "fire"
+    },
+    {
+      "photo": "input/stars.png",
+      "scene": "twinkle"
+    },
+    {
+      "photo": "input/city.png",
+      "scene": "twinkle"
+    },
+    {
+      "photo": "input/fairy.png",
+      "scene": "twinkle"
+    }
+  ]
+}

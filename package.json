@@ -1,19 +1,31 @@
 {
   "name": "asciigraph",
   "version": "0.1.0",
-  "description": "Bring a still image to life as a seamless ASCII loop: the image becomes hundreds of thousands of swaying strands, and every character turns with the strand beneath it.",
+  "description": "Bring a still photo to life as a seamless loop and an ASCII animation: water, skies, grass, waterfalls, steam, fire and starlight each move the way they should, with their own sound if you like.",
   "private": true,
   "type": "module",
   "license": "MIT",
+  "bin": {
+    "asciigraph": "bin/asciigraph.mjs"
+  },
   "scripts": {
     "start": "node server.mjs",
-    "check": "node scripts/check-loop.mjs"
+    "check": "node scripts/check-loop.mjs",
+    "batch": "node scripts/batch.mjs",
+    "mcp": "node bin/asciigraph.mjs mcp"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "ffmpeg-static": "5.3.0",
-    "three": "0.169.0"
+    "mp4-muxer": "5.2.2",
+    "puppeteer-core": "25.16.0",
+    "three": "0.169.0",
+    "zod": "4.6.7"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12"
+  },
+  "overrides": {
+    "basic-ftp": "6.2.6"
   }
 }

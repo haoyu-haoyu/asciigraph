@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>asciigraph · living-photo</title>
+  <style>
+    body { margin: 0; padding: 24px 16px; background: #0c0e0b; color: #dfe8d2; font: 15px/1.6 system-ui, sans-serif; }
+    main { max-width: 860px; margin: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    pre { overflow-x: auto; }
+    living-photo { border-radius: 10px; }
+    .hero { height: 320px; }
+    .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .pair living-photo { aspect-ratio: 3 / 4; }
+    code { color: #b9e07a; }
+  </style>
+  <!-- living-photo needs "three"; on your own site, point these at a CDN -->
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }
+  </script>
+  <script type="module" src="./src/element.js"></script>
+</head>
+<body>
+  <main>
+    <h1>&lt;living-photo&gt;</h1>
+    <p>Each of these is the photo itself, moving live in the page: no video file.</p>
+    <living-photo class="hero" src="examples/beach.png" mode="flow"></living-photo>
+    <div class="pair">
+      <living-photo src="examples/grass.png" mode="flow"></living-photo>
+      <living-photo src="examples/grass.png" mode="ascii"></living-photo>
+    </div>
+    <pre><code>&lt;living-photo src="beach.jpg" mode="flow"&gt;&lt;/living-photo&gt;</code></pre>
+  </main>
+</body>
+</html>

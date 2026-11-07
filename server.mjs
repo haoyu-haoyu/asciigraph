@@ -22,11 +22,17 @@ const readBody = (req) => new Promise((resolve, reject) => {
   req.on('error', reject);
 });
 
-const safeTag = (t) => (t || 'loop').replace(/[^a-z0-9_-]/gi, '');
+// a tag as a folder name in out/: letters of any script, digits, _ and -;
+// nothing else (no dots, so never out/ itself or above it)
+const safeTag = (t) => (t || '').replace(/[^\p{L}\p{N}_-]/gu, '');
 
 function encode(tag, fps) {
   const file = path.join(OUT, `${tag}.mp4`);
-  const args = ['-y', '-framerate', String(fps), '-i', path.join(OUT, tag, 'f_%04d.png'),
+  // the scene's sound, when the page sent one (it lives with the frames, so an
+  // export without sound=on never picks up an old one)
+  const wav = path.join(OUT, tag, 'sound.wav');
+  const audio = fs.existsSync(wav) ? ['-i', wav, '-c:a', 'aac', '-b:a', '160k', '-shortest'] : [];
+  const args = ['-y', '-framerate', String(fps), '-i', path.join(OUT, tag, 'f_%04d.png'), ...audio,
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', file];
   return new Promise((resolve) => {
     const p = spawn(ffmpegPath, args);
@@ -36,8 +42,8 @@ function encode(tag, fps) {
   });
 }
 
-http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
+const handler = async (req, res) => {
+  const url = new URL(req.url, 'http://localhost');
   try {
     // only this page may post: another site open in the same browser can't
     // write files here (a browser always sends Origin on a cross-site POST)
@@ -45,12 +51,23 @@ http.createServer(async (req, res) => {
     if (req.method === 'POST' && origin && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
       res.statusCode = 403; res.end('forbidden'); return;
     }
+    if (req.method === 'POST' && ['/frame', '/sound', '/encode'].includes(url.pathname) && !safeTag(url.searchParams.get('tag'))) {
+      res.statusCode = 400; res.end('tag= needs letters or digits'); return;
+    }
     if (req.method === 'POST' && url.pathname === '/frame') {
       const dir = path.join(OUT, safeTag(url.searchParams.get('tag')));
       const i = Number(url.searchParams.get('i'));
       if (i === 0) fs.rmSync(dir, { recursive: true, force: true });
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, `f_${String(i).padStart(4, '0')}.png`), await readBody(req));
+      res.end('ok');
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/sound') {
+      const dir = path.join(OUT, safeTag(url.searchParams.get('tag')));
+      const body = await readBody(req);
+      if (!fs.existsSync(dir) || body.subarray(0, 4).toString() !== 'RIFF') { res.statusCode = 400; res.end('expected a WAV after the frames'); return; }
+      fs.writeFileSync(path.join(dir, 'sound.wav'), body);
       res.end('ok');
       return;
     }
@@ -89,4 +106,18 @@ http.createServer(async (req, res) => {
   } catch (e) {
     res.statusCode = 500; res.end(String(e));
   }
-}).listen(PORT, '127.0.0.1', () => console.log(`asciigraph → http://localhost:${PORT}`));
+};
+
+// The server on port (0: any free one); resolves once it is listening.
+// The command line (scripts/render.mjs) starts its own this way.
+export function startServer(port = PORT) {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer(handler);
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => resolve(server));
+  });
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  startServer().then(() => console.log(`asciigraph → http://localhost:${PORT}`));
+}

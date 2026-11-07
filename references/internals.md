@@ -1,12 +1,22 @@
 # Internals
 
-Only needed when changing the code. After any change, re-run the Checks in SKILL.md on at least one water, one sky and one grass image (`examples/beach.png` and `examples/grass.png` are two of them).
+Only needed when changing the code. After any change, re-run the Checks in SKILL.md on at least one water, one sky and one grass image (`examples/beach.png` and `examples/grass.png` are two of them), and `npm run batch`, which renders every photo in `tests/photos.json` small and reports the scene picked and the seam.
 
 ## Where things are
 
 | File | What it does |
 |---|---|
-| `src/main.js` | reads the URL, picks the scene, runs preview and export |
+| `src/main.js` | the page: reads the URL, shows the preview, exports through the server |
+| `src/living.js` | builds one living photo from an image and options: size and crop, the scene guess, the scene, the post pass. The page, the demo and `<living-photo>` share it |
+| `src/sound.js` | each scene's sound, from noise, one loop long |
+| `src/encode.js` | MP4 in the browser (WebCodecs and mp4-muxer), for the demo |
+| `demo.html`, `src/demo.js` | the drop-a-photo page; static, no server |
+| `src/element.js` | `<living-photo>` |
+| `bin/asciigraph.mjs`, `scripts/render.mjs` | the command line; render.mjs drives the installed Chrome headless through the server |
+| `scripts/tty.mjs` | text frames from an MP4, played or streamed to curl |
+| `scripts/mcp.mjs` | the MCP server (one tool, animate_photo) |
+| `scripts/livephoto.swift` | MP4 → Live Photo pair (macOS) |
+| `scripts/batch.mjs`, `tests/photos.json` | the photo list every change should still handle |
 | `src/masks.js` | shared helpers: the photo read once on a coarse grid (160 cells on the long side), flood fill, mask textures |
 | `src/sky.js` | finds the sky, the horizon and whether a sea lies under it |
 | `src/shore.js` | finds dry land to keep still, the grass on it that may sway, and how near each point is to land |
@@ -40,4 +50,5 @@ Only needed when changing the code. After any change, re-run the Checks in SKILL
 - **Perspective.** The sea is a plane seen from the shore. Screen motion is scaled by distance, and the along-view part by a further `seaLine · ps²`. Without that factor the far sea moves as fast as the near sea and looks like a wall.
 - **Marks and the loop.** Where grass is painted still, its light and gusts are held at the loop's first moment. At a soft edge they blend the held and the live value. Never slow the clock there instead (`uT * calm`): a partly slowed clock doesn't come back round, and the loop jumps.
 - **Marks and the scene guess.** The scene is chosen on the sky as found, not as marked. Otherwise painting the clouds still turns a sky photo into a "water" one.
+- **Sound and the loop.** Sound repeats with the picture the same way: every swell and gust a whole number of times per loop, filters run twice round so they end in the state they start in, clicks near the end wrap to the start. The browser's AAC encoder pads the end to whole packets: drop the packets past the video (encode.js), or the file runs longer than the loop and a repeating player stalls.
 - **Flicker.** Measure it, don't eyeball it: the block-averaged (32×32) second difference between frames, near, mid-distance and far. Fine detail far off flickers first. Fade each wave by its on-screen wavelength.

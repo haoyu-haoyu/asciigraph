@@ -1,0 +1,20 @@
+# Every push and pull request: the code parses, and the photos in the repo
+# (examples/) still render as the scene they should, with a seamless loop.
+# Photos under input/ aren't in the repo, so the batch skips them here.
+name: ci
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Syntax
+        run: for f in src/*.js scripts/*.mjs bin/*.mjs server.mjs; do node --check "$f" || exit 1; done
+      - name: Photo batch
+        # the runner has Chrome; WebGL runs in software there
+        run: CHROME_PATH=$(which google-chrome) npm run batch

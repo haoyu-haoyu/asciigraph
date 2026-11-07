@@ -7,7 +7,7 @@
 <p align="center">给它一张照片，还你一段小循环：海浪往岸上涌，云在飘，草在摆。<br>可以是普通视频，也可以是会动的 ASCII 字符画。</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/node-%E2%89%A518-0b1519?style=flat-square&labelColor=0b1519&color=e2c48c" alt="Node 18 以上">
+  <img src="https://img.shields.io/badge/node-%E2%89%A522-0b1519?style=flat-square&labelColor=0b1519&color=e2c48c" alt="Node 22.12 以上">
   <img src="https://img.shields.io/badge/runs%20in-the%20browser-0b1519?style=flat-square&labelColor=0b1519&color=5f9e98" alt="在浏览器里运行">
   <img src="https://img.shields.io/badge/license-MIT-0b1519?style=flat-square&labelColor=0b1519&color=8fa9a6" alt="MIT 许可证">
 </p>
@@ -92,13 +92,26 @@
   </tr>
 </table>
 
+<p align="center"><sub>夜里的星星和灯光（<code>scene=twinkle</code>）：</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/readme/gallery/stars.webp" width="100%" alt="暗色山峦和平静湖面上方的银河，星星在闪"></td>
+    <td width="50%"><img src="./assets/readme/gallery/fairy.webp" width="100%" alt="夜里卧室窗前挂着一串小灯，灯泡忽明忽暗"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>星空</b><br><sub>越亮的星闪得越厉害，暗的只微微闪</sub></td>
+    <td align="center"><b>串灯</b><br><sub>每颗灯泡各闪各的，房间不动</sub></td>
+  </tr>
+</table>
+
 <br>
 
 <img src="./assets/readme/zh/section-start.svg" width="100%" alt="04 开始使用">
 
 ### 方式一：自己跑
 
-需要 Node.js 18 以上。
+需要 Node.js 22.12 以上。
 
 ```bash
 git clone https://github.com/haoyu-haoyu/asciigraph.git
@@ -107,7 +120,9 @@ npm install
 npm start
 ```
 
-打开 http://localhost:5177 会看到海滩的例子。想用自己的照片，就放进 `input/`，然后打开：
+最快的用法是打开 http://localhost:5177/demo.html：把照片拖进去，选好场景和尺寸，就能下载 MP4。全程都在浏览器里完成，照片不会上传，所以这个页面也可以直接当静态网页发布，比如放到 GitHub Pages 上。
+
+打开 http://localhost:5177 是带全部参数的完整页面，会看到海滩的例子。想用自己的照片，就放进 `input/`，然后打开：
 
 ```
 http://localhost:5177/?img=input/your-photo.jpg
@@ -115,9 +130,25 @@ http://localhost:5177/?img=input/your-photo.jpg
 
 想保存视频，就在网址后面加 `&export=ascii,flow`。页面别关，等它显示 `done`，文件在 `out/` 里。
 
+### 也可以用命令行
+
+它会在后台调用你电脑上已有的 Chrome（或 Edge），不弹窗口：
+
+```bash
+node bin/asciigraph.mjs photo.jpg --size iphone --mode both --sound
+```
+
+其他选项用 `node bin/asciigraph.mjs --help` 查看。网址里的任何参数都可以用 `--set` 传，比如 `--set wind=30`。
+
 ### 方式二：交给 Claude Code
 
-仓库里带了一份 `SKILL.md`。把仓库放到 Claude Code 找技能的地方：
+仓库里带了一份 `SKILL.md`，可以作为技能装进 Claude Code、Codex、Cursor 等支持技能的 AI 工具：
+
+```bash
+npx skills add haoyu-haoyu/asciigraph
+```
+
+只用 Claude Code 的话，也可以直接克隆到它找技能的地方：
 
 ```bash
 git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigraph
@@ -130,9 +161,10 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 <br>
 
 1. 把照片放进 `input/`，打开 `http://localhost:5177/?img=input/beach.jpg`。水、沙滩、天空它会自己分出来。
-2. 按屏幕裁剪：加上 `&width=1179&height=2556`（iPhone 15 Pro 的分辨率）。如果框到的不是你想要的部分，用 `&focus=0.5,0.3` 挪一下，前一个是左右，后一个是上下，都在 0 到 1 之间。
+2. 按屏幕裁剪：加上 `&size=android`（还有 `iphone`、`mac`、`1080p`、`4k` 等；其他屏幕就写 `&width=1080&height=2340`）。如果框到的不是你想要的部分，用 `&focus=0.5,0.3` 挪一下，前一个是左右，后一个是上下，都在 0 到 1 之间。
 3. 加一次 `&shore=show`：沙滩应该变红，海不应该变红。如果漏掉了礁石或者认错了，按 `E` 直接涂一下（见下面）。没问题就把 `shore=show` 去掉。
 4. 加上 `&export=ascii,flow`，等它显示 `done`，两段视频就在 `out/` 里了。
+5. 把 MP4 设成壁纸：Windows 用 Wallpaper Engine 或 Lively Wallpaper；安卓用视频壁纸 App（三星锁屏可以直接设，最长 15 秒）；Mac 用视频壁纸 App。iPhone 不能把视频设成循环播放的壁纸，但可以用实况照片，手机亮屏时会动一下。在 Mac 上运行 `node bin/asciigraph.mjs live photo.jpg` 就能生成。把生成的两个文件一起隔空投送到手机，再到"设置 → 墙纸"里选它。
 
 </details>
 
@@ -145,6 +177,7 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | 参数 | 作用 |
 |---|---|
 | `img=input/photo.jpg` | 用哪张照片 |
+| `size=android` | 按设备选壁纸尺寸：`iphone`、`iphone-max`、`android`、`ipad`、`mac`、`1080p`、`1440p`、`4k` |
 | `width=1080&height=2340` | 输出尺寸，做壁纸就填屏幕分辨率 |
 | `focus=0.5,0.3` | 裁剪时保留照片的哪一部分 |
 | `mode=flow` | 一打开就是普通画面，不是 ASCII |
@@ -156,8 +189,9 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `shore=show` | 用红色标出它让哪些地方保持不动 |
 | `marks=input/photo-marks.png` | 你自己涂的修正，按 `E` 涂完会自动保存并加上 |
 | `haze=0` | 地平线上不加雾 |
+| `sound=on` | 导出时带上场景自己的声音：海浪、风、瀑布的轰鸣、篝火噼啪声、夜里的虫鸣 |
 
-在页面里按 `M` 切换 ASCII 和普通画面，空格暂停，`E` 打开画笔。
+在页面里按 `M` 切换 ASCII 和普通画面，空格暂停，`S` 播放声音，`E` 打开画笔。
 
 </details>
 
@@ -174,6 +208,35 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 </details>
 
 <details>
+<summary><b>放进网页、终端或 AI 工具里</b></summary>
+<br>
+
+**放进你自己的网页**，照片可以直接在页面里实时动起来，不需要视频文件：
+
+```html
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }</script>
+<script type="module" src="https://cdn.jsdelivr.net/gh/haoyu-haoyu/asciigraph@main/src/element.js"></script>
+<living-photo src="beach.jpg" mode="flow" style="height: 400px"></living-photo>
+```
+
+支持 `mode`、`scene` 这两个属性，其他参数写在 `options` 里（`options="wind=30&speed=0.8"`）。滚出屏幕时会暂停；访客如果开了"减少动态效果"，它就保持静止。`embed.html` 是一个现成的例子。
+
+**在终端里**用彩色字符播放：
+
+```bash
+node bin/asciigraph.mjs play photo.jpg            # 在当前终端播放，Ctrl-C 退出
+node bin/asciigraph.mjs stream photo.jpg          # 然后在别的终端运行：curl http://localhost:7777
+```
+
+**在 Claude Desktop、Cursor 等支持 MCP 的工具里**，作为 `animate_photo` 工具调用：
+
+```bash
+claude mcp add asciigraph -- node /path/to/asciigraph/bin/asciigraph.mjs mcp
+```
+
+</details>
+
+<details>
 <summary><b>仓库里有什么</b></summary>
 <br>
 
@@ -184,6 +247,12 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `src/water.js` | 水、浪花拍岸、飘动的云 |
 | `src/field.js` | 草和田野里摆动的草叶 |
 | `src/post.js` | 把画面变成 ASCII |
+| `src/sound.js` | 每个场景的声音 |
+| `src/living.js` | 生成一张会动的照片；完整页面、试用页和 `<living-photo>` 都用它 |
+| `demo.html`、`src/demo.js`、`src/encode.js` | 拖照片进去就能用的试用页，MP4 直接在浏览器里生成 |
+| `src/element.js` | 可以放进任何网页的 `<living-photo>` |
+| `bin/asciigraph.mjs` | 命令行：导出视频，以及 `play`、`stream`、`live`、`mcp` |
+| `npm run batch` | 跑一遍 `tests/photos.json` 里的照片，报告每张的结果 |
 | `src/editor.js`、`src/marks.js` | `E` 画笔，以及涂的标记怎么覆盖自动识别 |
 | `server.mjs` | 本地服务器，也负责写出导出的视频 |
 | `npm run check` | 检查导出的循环首尾有没有跳一下 |

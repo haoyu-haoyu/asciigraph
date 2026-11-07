@@ -7,7 +7,7 @@
 <p align="center">Give it one photo. Get back a short loop where the sea rolls in, clouds drift and grass sways,<br>drawn as a normal video or as moving ASCII.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/node-%E2%89%A518-0b1519?style=flat-square&labelColor=0b1519&color=e2c48c" alt="Node 18 or newer">
+  <img src="https://img.shields.io/badge/node-%E2%89%A522-0b1519?style=flat-square&labelColor=0b1519&color=e2c48c" alt="Node 22.12 or newer">
   <img src="https://img.shields.io/badge/runs%20in-the%20browser-0b1519?style=flat-square&labelColor=0b1519&color=5f9e98" alt="Runs in the browser">
   <img src="https://img.shields.io/badge/license-MIT-0b1519?style=flat-square&labelColor=0b1519&color=8fa9a6" alt="MIT license">
 </p>
@@ -92,13 +92,26 @@ You get two versions of every loop: `flow`, the photo itself in motion, and `asc
   </tr>
 </table>
 
+<p align="center"><sub>Stars and lights at night (<code>scene=twinkle</code>):</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/readme/gallery/stars.webp" width="100%" alt="The Milky Way over dark mountains and a still lake, the stars twinkling"></td>
+    <td width="50%"><img src="./assets/readme/gallery/fairy.webp" width="100%" alt="Fairy lights strung across a bedroom window at night, the bulbs dimming and brightening"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Starry sky</b><br><sub>the brightest stars flare the most, the faint ones barely flicker</sub></td>
+    <td align="center"><b>Fairy lights</b><br><sub>each bulb on its own beat, the room stays still</sub></td>
+  </tr>
+</table>
+
 <br>
 
 <img src="./assets/readme/en/section-start.svg" width="100%" alt="04 Get started">
 
 ### Option 1: run it yourself
 
-You need Node.js 18 or newer.
+You need Node.js 22.12 or newer.
 
 ```bash
 git clone https://github.com/haoyu-haoyu/asciigraph.git
@@ -107,7 +120,9 @@ npm install
 npm start
 ```
 
-Open http://localhost:5177 and you'll see the beach example. To use your own photo, put it in `input/` and open:
+The quickest way in is http://localhost:5177/demo.html: drop a photo on it, pick a scene and size, and download the MP4. It all happens in the browser; nothing is uploaded, so the page also works as plain static files (on GitHub Pages, say).
+
+Open http://localhost:5177 for the full page with every option; you'll see the beach example. To use your own photo, put it in `input/` and open:
 
 ```
 http://localhost:5177/?img=input/your-photo.jpg
@@ -115,9 +130,25 @@ http://localhost:5177/?img=input/your-photo.jpg
 
 To save the videos, add `&export=ascii,flow` to the end. Keep the tab open until it says `done`; the files land in `out/`.
 
+### Or from the command line
+
+It drives the Chrome (or Edge) you already have, with no window:
+
+```bash
+node bin/asciigraph.mjs photo.jpg --size iphone --mode both --sound
+```
+
+`node bin/asciigraph.mjs --help` lists the rest. Any URL option goes through `--set`, e.g. `--set wind=30`.
+
 ### Option 2: let Claude Code do it
 
-The repo includes a `SKILL.md`. Put the repo where Claude Code looks for skills:
+The repo includes a `SKILL.md`, so it installs as a skill for Claude Code, Codex, Cursor and other agents that read skills:
+
+```bash
+npx skills add haoyu-haoyu/asciigraph
+```
+
+Or, for Claude Code alone, clone it where it looks for skills:
 
 ```bash
 git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigraph
@@ -130,9 +161,10 @@ Then just ask, for example: *"Make this beach photo into a phone wallpaper loop.
 <br>
 
 1. Put the photo in `input/` and open `http://localhost:5177/?img=input/beach.jpg`. It sorts out water, sand and sky by itself.
-2. Crop it to your screen with `&width=1179&height=2556` (that's an iPhone 15 Pro). If the wrong part ends up in frame, move it with `&focus=0.5,0.3`: across, then down, both from 0 to 1.
+2. Crop it to your screen with `&size=android` (or `iphone`, `mac`, `1080p`, `4k`…; any other screen: `&width=1080&height=2340`). If the wrong part ends up in frame, move it with `&focus=0.5,0.3`: across, then down, both from 0 to 1.
 3. Add `&shore=show` once. The sand should turn red and the sea shouldn't. If it missed a rock or got something wrong, press `E` and paint over it (below). Take `shore=show` off again when it looks right.
 4. Add `&export=ascii,flow` and wait for `done`. Both videos are in `out/`.
+5. Set the MP4 as your wallpaper: on Windows with Wallpaper Engine or Lively Wallpaper, on Android with a video wallpaper app (Samsung lock screens take it directly, up to 15 s), on a Mac with a video wallpaper app. An iPhone can't loop a video as wallpaper, but it takes a Live Photo, which plays when the phone wakes: `node bin/asciigraph.mjs live photo.jpg` (on a Mac) writes one. AirDrop both files to the phone together, then pick it under Settings → Wallpaper.
 
 </details>
 
@@ -145,6 +177,7 @@ Everything goes in the URL.
 | Option | What it does |
 |---|---|
 | `img=input/photo.jpg` | the photo to use |
+| `size=android` | a wallpaper size: `iphone`, `iphone-max`, `android`, `ipad`, `mac`, `1080p`, `1440p` or `4k` |
 | `width=1080&height=2340` | output size; for a wallpaper, your screen size |
 | `focus=0.5,0.3` | which part of the photo to keep when cropping |
 | `mode=flow` | start in the plain view instead of ASCII |
@@ -156,8 +189,9 @@ Everything goes in the URL.
 | `shore=show` | tint what it's keeping still in red |
 | `marks=input/photo-marks.png` | your own corrections, painted with `E` (saved and added for you) |
 | `haze=0` | no haze on the horizon |
+| `sound=on` | export with the scene's own sound: surf, wind, a waterfall's roar, crackling fire, crickets at night |
 
-In the page, `M` switches between ASCII and the plain view, space pauses, and `E` opens the brush.
+In the page, `M` switches between ASCII and the plain view, space pauses, `S` plays the sound and `E` opens the brush.
 
 </details>
 
@@ -174,6 +208,35 @@ It tells water, land and sky apart by colour and texture alone. That's fine for 
 </details>
 
 <details>
+<summary><b>On a web page, in a terminal, in an AI tool</b></summary>
+<br>
+
+**On your own web page**, a photo can move live, with no video file:
+
+```html
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }</script>
+<script type="module" src="https://cdn.jsdelivr.net/gh/haoyu-haoyu/asciigraph@main/src/element.js"></script>
+<living-photo src="beach.jpg" mode="flow" style="height: 400px"></living-photo>
+```
+
+It takes `mode`, `scene`, and `options` for the rest (`options="wind=30&speed=0.8"`). It stops while scrolled out of view and holds still for visitors who ask for reduced motion. `embed.html` shows it running.
+
+**In a terminal**, as coloured text:
+
+```bash
+node bin/asciigraph.mjs play photo.jpg            # here, until Ctrl-C
+node bin/asciigraph.mjs stream photo.jpg          # then, elsewhere: curl http://localhost:7777
+```
+
+**In Claude Desktop, Cursor and other MCP clients**, as an `animate_photo` tool:
+
+```bash
+claude mcp add asciigraph -- node /path/to/asciigraph/bin/asciigraph.mjs mcp
+```
+
+</details>
+
+<details>
 <summary><b>What's in the repo</b></summary>
 <br>
 
@@ -184,6 +247,12 @@ It tells water, land and sky apart by colour and texture alone. That's fine for 
 | `src/water.js` | the water, the waves breaking and the drifting clouds |
 | `src/field.js` | the swaying strands for grass and fields |
 | `src/post.js` | turns a frame into ASCII |
+| `src/sound.js` | each scene's sound |
+| `src/living.js` | builds one living photo; the page, the demo and `<living-photo>` all use it |
+| `demo.html`, `src/demo.js`, `src/encode.js` | the drop-a-photo page, which makes the MP4 in the browser |
+| `src/element.js` | `<living-photo>` for any web page |
+| `bin/asciigraph.mjs` | the command line: render, `play`, `stream`, `live`, `mcp` |
+| `npm run batch` | runs the photos in `tests/photos.json` and reports what each became |
 | `src/editor.js`, `src/marks.js` | the `E` brush, and how painted marks override what it found |
 | `server.mjs` | the local server; also writes the exported videos |
 | `npm run check` | checks that an exported loop has no visible jump |
