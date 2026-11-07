@@ -1,4 +1,4 @@
-// Encodes one loop to an MP4 in the browser (WebCodecs), with no frames
+// Encodes one loop (or a video's frames) to an MP4 in the browser (WebCodecs), with no frames
 // written to disk and no ffmpeg: the demo page needs no server at all.
 // The local page still sends frames to the server instead (server.mjs),
 // which keeps the exact frames for the seamless check.
@@ -21,10 +21,16 @@ async function pickCodec(width, height, bitrate, framerate) {
 
 // living: from createLiving; mode: 'ascii' | 'flow'; sound: an AudioBuffer
 // one loop long, or null; onProgress(done, total). Resolves to an MP4 Blob.
-export async function encodeLoop(living, { mode = 'ascii', sound = null, onProgress = () => {} } = {}) {
-  const { width, height, fps, loop } = living;
+export function encodeLoop(living, { mode = 'ascii', sound = null, onProgress = () => {} } = {}) {
+  const N = Math.round(living.loop * living.fps);
+  return encodeFrames(living, { frames: N, mode, sound, onProgress, draw: (i) => living.draw(i / N, mode, i) });
+}
+
+// Any run of frames: draw(i) puts frame i on living's canvas (it may be async,
+// a video seeking to it). sound: an AudioBuffer as long as the frames, or null.
+export async function encodeFrames(living, { frames: N, draw, mode = 'ascii', sound = null, onProgress = () => {} }) {
+  const { width, height, fps } = living;
   const canvas = living.renderer.domElement;
-  const N = Math.round(loop * fps);
   // fine glyphs need more bits than a photo does
   const bitrate = Math.round(width * height * fps * (mode === 'ascii' ? 0.3 : 0.2));
   const config = await pickCodec(width, height, bitrate, fps);
@@ -43,7 +49,7 @@ export async function encodeLoop(living, { mode = 'ascii', sound = null, onProgr
   try {
     for (let i = 0; i < N; i++) {
       if (failure) throw failure;
-      living.draw(i / N, mode, i);
+      await draw(i);
       const frame = new VideoFrame(canvas, { timestamp: Math.round(i * us), duration: Math.round(us) });
       video.encode(frame, { keyFrame: i % key === 0 });
       frame.close();

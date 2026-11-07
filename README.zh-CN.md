@@ -120,7 +120,7 @@ npm install
 npm start
 ```
 
-最快的用法是打开 http://localhost:5177/demo.html：把照片拖进去，选好场景和尺寸，就能下载 MP4。全程都在浏览器里完成，照片不会上传，所以这个页面也可以直接当静态网页发布，比如放到 GitHub Pages 上。
+最快的用法是打开 http://localhost:5177/demo.html：把照片拖进去，选好场景和尺寸，就能下载 MP4。也可以拖进一段视频：它会变成 ASCII 动画，所有样式都能用，笔画会顺着视频里真实的运动方向转（按前后两帧算出来）；最长导出 60 秒，可以保留原声。全程都在浏览器里完成，文件不会上传，所以这个页面也可以直接当静态网页发布，比如放到 GitHub Pages 上。
 
 打开 http://localhost:5177 是带全部参数的完整页面，会看到海滩的例子。想用自己的照片，就放进 `input/`，然后打开：
 
@@ -251,6 +251,7 @@ claude mcp add asciigraph -- node /path/to/asciigraph/bin/asciigraph.mjs mcp
 | `src/sound.js` | 每个场景的声音 |
 | `src/living.js` | 生成一张会动的照片；完整页面、试用页和 `<living-photo>` 都用它 |
 | `demo.html`、`src/demo.js`、`src/encode.js` | 拖照片进去就能用的试用页，MP4 直接在浏览器里生成 |
+| `src/video.js` | 把视频画成 ASCII，笔画方向来自前后两帧之间的运动（试用页在用） |
 | `src/element.js` | 可以放进任何网页的 `<living-photo>` |
 | `bin/asciigraph.mjs` | 命令行：导出视频，以及 `play`、`stream`、`live`、`mcp` |
 | `npm run batch` | 跑一遍 `tests/photos.json` 里的照片，报告每张的结果 |

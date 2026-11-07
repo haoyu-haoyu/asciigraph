@@ -120,7 +120,7 @@ npm install
 npm start
 ```
 
-The quickest way in is http://localhost:5177/demo.html: drop a photo on it, pick a scene and size, and download the MP4. It all happens in the browser; nothing is uploaded, so the page also works as plain static files (on GitHub Pages, say).
+The quickest way in is http://localhost:5177/demo.html: drop a photo on it, pick a scene and size, and download the MP4. It takes videos too: drop one in and it plays in ASCII, every style included, with the strokes turning to follow what really moves in it (the motion between frames); the download is up to 60 seconds and can keep the video's own sound. It all happens in the browser; nothing is uploaded, so the page also works as plain static files (on GitHub Pages, say).
 
 Open http://localhost:5177 for the full page with every option; you'll see the beach example. To use your own photo, put it in `input/` and open:
 
@@ -251,6 +251,7 @@ claude mcp add asciigraph -- node /path/to/asciigraph/bin/asciigraph.mjs mcp
 | `src/sound.js` | each scene's sound |
 | `src/living.js` | builds one living photo; the page, the demo and `<living-photo>` all use it |
 | `demo.html`, `src/demo.js`, `src/encode.js` | the drop-a-photo page, which makes the MP4 in the browser |
+| `src/video.js` | a video drawn in ASCII, its strokes turned by the motion between frames (the demo page uses it) |
 | `src/element.js` | `<living-photo>` for any web page |
 | `bin/asciigraph.mjs` | the command line: render, `play`, `stream`, `live`, `mcp` |
 | `npm run batch` | runs the photos in `tests/photos.json` and reports what each became |
