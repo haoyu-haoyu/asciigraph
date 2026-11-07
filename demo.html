@@ -14,6 +14,8 @@
     h1 { margin: 0; font: 600 18px/1.2 Menlo, monospace; color: var(--accent); }
     h1 small { display: block; margin-top: 6px; font: 13px/1.4 system-ui, sans-serif; color: var(--dim); }
     label { display: grid; gap: 4px; font-size: 12px; color: var(--dim); }
+    .lbl { display: block; margin-bottom: 4px; font-size: 12px; color: var(--dim); }
+    fieldset { margin: 0; min-width: 0; }
     select, button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; }
     button { cursor: pointer; }
     button:hover:not(:disabled), select:hover { border-color: var(--accent); }
@@ -35,6 +37,14 @@
     #progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; display: none; }
     #progress div { height: 100%; width: 0; background: var(--accent); }
     #status { font-size: 12px; color: var(--dim); min-height: 18px; }
+    #asciiopts { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+    [hidden] { display: none !important; }
+    #asciiopts legend { padding: 0 4px; font-size: 12px; color: var(--accent); }
+    input[type=text] { font: 13px/1.3 Menlo, monospace; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; }
+    .swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+    .swatches button { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 8px; }
+    .swatches button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+    .swatches i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--line); }
     #status a { color: var(--accent); }
     footer { margin-top: auto; font-size: 12px; color: var(--dim); }
     footer a { color: var(--dim); }
@@ -87,6 +97,42 @@
         <button id="m-ascii" aria-pressed="true">ASCII</button>
         <button id="m-flow" aria-pressed="false" data-t="flowview">Photo</button>
       </div>
+      <fieldset id="asciiopts">
+        <legend data-t="asciistyle">ASCII style</legend>
+        <div><span class="lbl" data-t="ink">Colour</span>
+          <div class="swatches" id="ink" role="group">
+            <button data-v="photo" aria-pressed="true"><i style="background:linear-gradient(135deg,#d9a35b,#3d8f86,#8fc0e8)"></i><span data-t="inkphoto">Photo</span></button>
+            <button data-v="green" aria-pressed="false"><i style="background:#59ff73"></i><span data-t="inkgreen">Green</span></button>
+            <button data-v="amber" aria-pressed="false"><i style="background:#ffb338"></i><span data-t="inkamber">Amber</span></button>
+            <button data-v="white" aria-pressed="false"><i style="background:#eef2f7"></i><span data-t="inkwhite">White</span></button>
+            <button data-v="paper" aria-pressed="false"><i style="background:#f2ede0;box-shadow:inset 0 0 0 3px #f2ede0,inset 0 0 0 6px #1a1c24"></i><span data-t="inkpaper">Ink on paper</span></button>
+          </div>
+        </div>
+        <label><span data-t="chars">Characters</span>
+          <select id="chars">
+            <option value="strokes" data-t="charsstrokes">Strokes that follow the motion</option>
+            <option value="classic" data-t="charsclassic">Classic ASCII  .:-=+*#@</option>
+            <option value="blocks" data-t="charsblocks">Shaded blocks ░▒▓█</option>
+            <option value="braille" data-t="charsbraille">Braille dots ⣿</option>
+            <option value="custom" data-t="charscustom">My own characters…</option>
+          </select>
+        </label>
+        <label id="charsetrow" hidden><span data-t="charset">Characters to use (any order)</span>
+          <input id="charset" type="text" value=" .:-=+*#%@" spellcheck="false" maxlength="128">
+        </label>
+        <div class="row">
+          <div><span class="lbl" data-t="cell">Character size</span>
+            <div class="seg" id="cell" role="group">
+              <button data-v="1" aria-pressed="true">1×</button><button data-v="2" aria-pressed="false">2×</button><button data-v="3" aria-pressed="false">3×</button>
+            </div>
+          </div>
+          <div><span class="lbl" data-t="bg">Background</span>
+            <div class="seg" id="bg" role="group">
+              <button data-v="glow" aria-pressed="true" data-t="bgglow">Glow</button><button data-v="plain" aria-pressed="false" data-t="bgplain">Black</button>
+            </div>
+          </div>
+        </div>
+      </fieldset>
       <div class="row">
         <button id="sound" aria-pressed="false" data-t="soundoff">Sound: off</button>
       </div>

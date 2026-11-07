@@ -181,6 +181,7 @@ git clone https://github.com/haoyu-haoyu/asciigraph.git ~/.claude/skills/asciigr
 | `width=1080&height=2340` | 输出尺寸，做壁纸就填屏幕分辨率 |
 | `focus=0.5,0.3` | 裁剪时保留照片的哪一部分 |
 | `mode=flow` | 一打开就是普通画面，不是 ASCII |
+| `ink=green`、`chars=braille`、`cell=2` | ASCII 的样子：单一荧光色（`green`、`amber`、`white`）或白底黑字 `paper`；字符可选经典 `classic`、明暗方块 `blocks`、盲文点阵 `braille`，或自己的字符（`charset= .:-=+*#@`）；字符放大；`bg=plain` 去掉字符背后的底光 |
 | `export=ascii,flow` | 把其中一个或两个版本存成视频 |
 | `scene=water` | 它认错照片类型时手动指定（还有 `grass`、`sky`，以及它不会自己选的 `waterfall` 瀑布、`steam` 蒸汽、`fire` 火焰、`twinkle` 夜里闪烁的星星和灯光） |
 | `amp=0.6` | 动得少一点；`amp=1.3` 动得多一点 |

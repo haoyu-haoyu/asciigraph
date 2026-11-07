@@ -13,6 +13,7 @@ import { classifyImage } from './classify.js';
 import { readGrid } from './masks.js';
 import { skyMask } from './sky.js';
 import { makePost } from './post.js';
+import { INKS, BGS, CHARS, CELLS, DEFAULT_STYLE } from './ascii.js';
 import { marksOnGrid } from './marks.js';
 
 export const SCENES = ['grass', 'water', 'sky', 'waterfall', 'steam', 'fire', 'twinkle'];
@@ -44,6 +45,7 @@ export function createLiving({ canvas, image, params, marksImg = null, name = 'p
   // a number from the options, or d when it is missing, 'auto' or not a number
   const num = (k, d) => { const s = q.get(k)?.trim(), v = Number(s || NaN); return Number.isFinite(v) ? v : d; };
 
+  const style = asciiStyle(q);
   const sizeName = q.get('size')?.trim().toLowerCase();
   if (sizeName && !Object.hasOwn(SIZES, sizeName)) {
     throw new LivingError(`No size called <code>${sizeName.replace(/[<&]/g, '')}</code>. Use one of ${Object.keys(SIZES).map((k) => `<code>${k}</code>`).join(', ')}, or give <code>width</code> and <code>height</code>.`);
@@ -126,7 +128,7 @@ export function createLiving({ canvas, image, params, marksImg = null, name = 'p
           grid, sky, skyOnly: scene === 'sky', skyShow: skyMode === 'show', cloud: rad(num('cloud', 0)), clouds: num('clouds', 1), haze: num('haze', null), marks, foundSky,
         })
       : buildField(renderer, { ...common, density: num('density', 1), marks, grid });
-    return { field, post: makePost(renderer, W, H, field) };
+    return { field, post: makePost(renderer, W, H, field, style) };
   };
   let parts;
   try {
@@ -150,12 +152,31 @@ export function createLiving({ canvas, image, params, marksImg = null, name = 'p
     },
     // put that render on the canvas as 'ascii' or 'flow' (either, or both in turn)
     output(mode) { post.output(mode); },
+    // change the ASCII look (ink, bg, cell, chars, charset) without building the scene again
+    setAscii(next) { const s = asciiStyle(new URLSearchParams({ ...this.ascii, ...next })); post.setAsciiStyle(s); this.ascii = s; },
+    ascii: style,
     draw(t, mode = 'ascii', frame = 0) { this.step(t, frame); post.output(mode); },
     dispose() {
       renderer.dispose();
       renderer.forceContextLoss();
     },
   };
+}
+
+// The ASCII look from the options (see ascii.js), refused when a value is not one it knows.
+export function asciiStyle(q) {
+  const pick = (k, list) => {
+    const v = q.get(k)?.trim().toLowerCase();
+    if (!v) return DEFAULT_STYLE[k];
+    const ok = list.map(String);
+    if (!ok.includes(v)) throw new LivingError(`<code>${k}</code> can be ${ok.map((o) => `<code>${o}</code>`).join(', ')}.`);
+    return typeof DEFAULT_STYLE[k] === 'number' ? Number(v) : v;
+  };
+  const style = { ink: pick('ink', Object.keys(INKS)), bg: pick('bg', BGS), cell: pick('cell', CELLS), chars: pick('chars', CHARS), charset: q.get('charset') ?? '' };
+  // characters of your own: charset alone is enough to ask for them
+  if (style.charset.trim() && !q.get('chars')) style.chars = 'custom';
+  if (style.chars === 'custom' && !style.charset.trim()) throw new LivingError('<code>chars=custom</code> needs the characters: <code>charset= .:-=+*#%@</code>, lightest first or in any order.');
+  return style;
 }
 
 // The largest W:H window of the image, placed by focus (0–1 each way).

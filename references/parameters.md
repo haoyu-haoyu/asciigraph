@@ -80,6 +80,20 @@ const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
 
 The water reads its heading from the photo's own waves. When the photo shows a sea horizon, waves come in from it in perspective: smaller and slower far off, breaking white where they reach land. Without a horizon, they head onshore if it found a shore, and otherwise along the photo's streaks (or `wind`, when given).
 
+## ASCII look
+
+They change only the ASCII version; the demo page has them under ASCII style, and they change as you pick them.
+
+| Option | Default | What it does |
+|---|---|---|
+| `ink` | `photo` | the photo's own colours; `green`, `amber` or `white` for one phosphor colour at the same brightness; `paper` for dark ink on a light background, the characters densest where the photo is darkest |
+| `bg` | `glow` | `glow` lights the space behind the characters so each cell keeps the photo's brightness; `plain` leaves it black and lets the characters carry it all. `paper` has its own background |
+| `cell` | 1 | how big the characters are: `2` or `3` draws each font pixel 2×2 or 3×3, fewer and larger characters |
+| `chars` | `strokes` | `strokes`: strokes turned to the motion under them, the look of the gallery; `classic`: a plain ramp of ` .:-+=o*#@`; `blocks`: shaded blocks; `braille`: 2×4 dots per cell, each lit or not, the finest detail; `custom`: the characters in `charset` |
+| `charset` | — | your own characters, in any order (they are sorted by how much ink they take), up to 32; giving it is enough to use them. Drawn with the browser's monospace font, so they read best at `cell=2` or `3` |
+
+Only the default look (`ink=photo`, `bg=glow`) keeps the photo's exposure cell for cell; the others trade it for their own look. The terminal player (`asciigraph play`, `stream`) draws its own characters and has its own `--style` and `--colors` instead.
+
 ## Sound (any scene)
 
 | Option | Default | What it does |

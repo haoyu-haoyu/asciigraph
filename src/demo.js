@@ -1,7 +1,7 @@
 // The drop-a-photo page (demo.html): everything runs here in the browser,
 // the photo is never uploaded, and the MP4 is encoded here too (encode.js),
 // so the page works as plain static files.
-import { createLiving, LivingError } from './living.js';
+import { createLiving, LivingError, asciiStyle } from './living.js';
 import { encodeLoop, canEncode } from './encode.js';
 import { sceneSound, playSound } from './sound.js';
 
@@ -18,6 +18,9 @@ const ZH = {
   soundoff: '声音：关', soundon: '声音：开', export: '下载 MP4',
   footer: '每段循环 12 秒，首尾无缝衔接。下载的尺寸按你选的来；4K 要几分钟。',
   making: '正在生成', encoding: (d, n) => `正在编码 ${d}/${n}`, saved: '已生成：', noEncode: '这个浏览器不能直接导出视频，请用新版 Chrome、Edge 或 Safari。',
+  asciistyle: 'ASCII 样式', ink: '颜色', inkphoto: '照片原色', inkgreen: '绿色荧光', inkamber: '琥珀色', inkwhite: '白色', inkpaper: '白底黑字',
+  chars: '字符', charsstrokes: '顺着运动方向的笔画', charsclassic: '经典 ASCII  .:-=+*#@', charsblocks: '明暗方块 ░▒▓█', charsbraille: '盲文点阵 ⣿', charscustom: '自定义字符…',
+  charset: '用哪些字符（顺序随意）', cell: '字符大小', bg: '背景', bgglow: '底光', bgplain: '纯黑',
   loadFail: '这张图片打不开。', pickScene: '如果它是其中一种，请在"场景"里选上。', soundNote: '（含声音）',
 };
 const zh = /^zh/i.test(navigator.language);
@@ -30,6 +33,10 @@ const say = (k, en, ...a) => t(k, ...a) ?? (typeof en === 'function' ? en(...a) 
 
 const $ = (id) => document.getElementById(id);
 const stage = $('stage'), msg = $('msg'), status = $('status'), bar = $('progress');
+// the ASCII look (ascii.js); only what differs from the default goes in the options
+const DEFAULT_STYLE = { ink: 'photo', bg: 'glow', cell: '1', chars: 'strokes', charset: '' };
+const style = { ...DEFAULT_STYLE };
+let applied = { ...DEFAULT_STYLE };   // the last style the canvas took: what the preview and the download use
 let photo = null, name = 'photo', living = null, mode = 'ascii', stopSound = null, start = performance.now(), busy = false;
 const phase = () => (living ? (((performance.now() - start) / 1000) % living.loop) / living.loop : 0);
 
@@ -39,6 +46,7 @@ function options(full) {
   const size = $('size').value;
   if (size) p.set('size', size);
   // the preview keeps the shape at a smaller width; the download is full size
+  for (const [k, v] of Object.entries(applied)) if (v !== DEFAULT_STYLE[k] && !(k === 'bg' && applied.ink === 'paper')) p.set(k, v);
   if (!full) p.set('width', PREVIEW);
   else if (!size) p.set('width', photo.width >= photo.height ? 1440 : 1080);
   return p;
@@ -112,8 +120,42 @@ for (const m of ['ascii', 'flow']) {
   $(`m-${m}`).onclick = () => {
     mode = m;
     for (const n of ['ascii', 'flow']) $(`m-${n}`).setAttribute('aria-pressed', String(n === m));
+    $('asciiopts').hidden = m !== 'ascii';
   };
 }
+
+// the ASCII style: the colour and background change at once, the cells and
+// characters rebuild only the ASCII layer, not the scene
+function restyle() {
+  $('charsetrow').hidden = style.chars !== 'custom';
+  for (const b of $('bg').children) b.disabled = style.ink === 'paper';   // (paper is its own background)
+  try {
+    if (living) living.setAscii(style); else asciiStyle(new URLSearchParams(style));   // (checked even before there is a photo)
+    applied = { ...style };
+    msg.textContent = '';
+  } catch (e) {
+    if (e instanceof LivingError) msg.innerHTML = e.html; else { msg.textContent = String(e.message || e); console.error(e); }
+  }
+}
+for (const id of ['ink', 'cell', 'bg']) {
+  for (const b of $(id).children) {
+    b.onclick = () => {
+      style[id] = b.dataset.v;
+      for (const o of $(id).children) o.setAttribute('aria-pressed', String(o === b));
+      restyle();
+    };
+  }
+}
+$('chars').onchange = () => {
+  style.chars = $('chars').value;
+  style.charset = style.chars === 'custom' ? $('charset').value : '';
+  restyle();
+};
+let typing = 0;
+$('charset').oninput = () => {
+  clearTimeout(typing);
+  typing = setTimeout(() => { if (style.chars === 'custom') { style.charset = $('charset').value; restyle(); } }, 250);
+};
 function setSoundLabel() {
   const on = !!stopSound;
   $('sound').setAttribute('aria-pressed', String(on));

@@ -181,6 +181,7 @@ Everything goes in the URL.
 | `width=1080&height=2340` | output size; for a wallpaper, your screen size |
 | `focus=0.5,0.3` | which part of the photo to keep when cropping |
 | `mode=flow` | start in the plain view instead of ASCII |
+| `ink=green`, `chars=braille`, `cell=2` | the ASCII look: one phosphor colour (`green`, `amber`, `white`) or dark ink on `paper`; `classic` characters, shaded `blocks`, `braille` dots or your own (`charset= .:-=+*#@`); bigger characters; `bg=plain` for no glow behind them |
 | `export=ascii,flow` | save one or both versions as video |
 | `scene=water` | override the guess when it's wrong (also `grass`, `sky`, and `waterfall`, `steam`, `fire` or `twinkle` for stars and lights at night, which it never guesses) |
 | `amp=0.6` | less motion; `amp=1.3` for more |

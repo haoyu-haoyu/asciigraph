@@ -20,10 +20,10 @@ const FINAL_FS = /* glsl */`
     gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
   }`;
 
-export function makePost(renderer, W, H, field) {
+export function makePost(renderer, W, H, field, style) {
   const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
   const dirRT = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType });
-  const ascii = new AsciiStrokes(renderer, W, H);
+  let ascii = new AsciiStrokes(renderer, W, H, style);
   const finalMat = new THREE.ShaderMaterial({
     uniforms: { tScene: { value: rt.texture }, uFrame: { value: 0 } },
     vertexShader: QUAD_VS, fragmentShader: FINAL_FS, depthTest: false, depthWrite: false,
@@ -34,7 +34,13 @@ export function makePost(renderer, W, H, field) {
   quadScene.add(quad);
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   return {
-    rt, ascii,   // (ascii: a handle for debugging in the console)
+    rt,
+    get ascii() { return ascii; },   // (a handle for debugging in the console)
+    // a new ASCII style: the ink and background at once, new cells or characters by a new layer
+    setAsciiStyle(next) {
+      if (ascii.needsRebuild(next)) { const old = ascii; ascii = new AsciiStrokes(renderer, W, H, next); old.dispose(); }
+      else ascii.setColours(next);
+    },
     renderScene(frame) {
       finalMat.uniforms.uFrame.value = frame % 997;
       renderer.setRenderTarget(rt);

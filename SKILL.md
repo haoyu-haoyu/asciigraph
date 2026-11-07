@@ -52,7 +52,7 @@ Run on every export. Get the bundled ffmpeg with `FF=$(node -p "require('ffmpeg-
    `$FF -i out/TAG/f_0000.png -i out/TAG/f_0015.png -lavfi "[0]scale=360:-1[a];[1]scale=360:-1[b];[a][b]psnr" -f null - 2>&1 | grep average`
    - About 25 dB or lower is good.
    - Near 29 or above, the motion is too subtle. Raise `amp` (try 1.3–1.5; water stops growing at 1.4). People judge this on a phone, where small sway disappears.
-3. **Colour matches the photo:** scale an ASCII frame and the source (cropped the same way) to about 108 px wide and compare them per brightness band.
+3. **Colour matches the photo** (the default ASCII look; `ink`, `bg` and `chars` trade this for their own): scale an ASCII frame and the source (cropped the same way) to about 108 px wide and compare them per brightness band.
    - ASCII brightness over source brightness should be about 1.0–1.1, and saturation about the source's.
    - Bright parts must keep their colour, not wash out to white or go neon.
    - Dark bands may read a little brighter in ASCII. That's expected from how cells are drawn.
