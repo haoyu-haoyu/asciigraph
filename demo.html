@@ -52,6 +52,13 @@
     /* (with no picture to sit on, e.g. a photo with no scene found, it takes its place) */
     #stage.empty #msg { position: static; }
     #msg code { color: var(--text); }
+    #msg .picks { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+    #msg .picks button { font-size: 12px; padding: 5px 9px; }
+    .link { justify-self: start; padding: 0; border: 0; background: none; font-size: 12px; color: var(--dim); text-decoration: underline; text-underline-offset: 2px; }
+    .link:hover:not(:disabled) { color: var(--accent); }
+    #more summary { cursor: pointer; width: fit-content; font-size: 12px; color: var(--dim); }
+    #more[open] summary { margin-bottom: 10px; }
+    #more > div + div { margin-top: 10px; }
     #progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; display: none; }
     #progress div { height: 100%; width: 0; background: var(--accent); }
     #status { font-size: 12px; color: var(--dim); }
@@ -100,6 +107,7 @@
         <div id="current" hidden>
           <span id="curname"></span>
           <span id="cursum"></span>
+          <button id="rescene" class="link" data-t="rescene">Not right? Pick the scene</button>
           <details><summary data-t="details">Details</summary><div id="info"></div></details>
         </div>
       </section>
@@ -160,6 +168,19 @@
             </div>
           </div>
         </fieldset>
+        <details id="more">
+          <summary data-t="more">More settings</summary>
+          <div><span class="lbl" id="amplbl" data-t="amp">How much it moves</span>
+            <div class="seg" id="amp" role="group" aria-labelledby="amplbl">
+              <button data-v="0.6" aria-pressed="false" data-t="amplow">Gently</button><button data-v="1" aria-pressed="true" data-t="ampmid">Normal</button><button data-v="1.4" aria-pressed="false" data-t="amphigh">A lot</button>
+            </div>
+          </div>
+          <div><span class="lbl" id="looplbl" data-t="looplen">Loop length</span>
+            <div class="seg" id="loop" role="group" aria-labelledby="looplbl">
+              <button data-v="6" aria-pressed="false" data-t="s6">6 s</button><button data-v="12" aria-pressed="true" data-t="s12">12 s</button><button data-v="20" aria-pressed="false" data-t="s20">20 s</button>
+            </div>
+          </div>
+        </details>
       </section>
 
       <section class="step">
@@ -177,6 +198,11 @@
             <option value="4k">4K</option>
           </select>
         </label>
+        <div id="focusrow" hidden><span class="lbl" id="focuslbl" data-t="focus">Which part to keep</span>
+          <div class="seg" id="focus" role="group" aria-labelledby="focuslbl">
+            <button data-v="0" aria-pressed="false"></button><button data-v="0.5" aria-pressed="true" data-t="middle">Middle</button><button data-v="1" aria-pressed="false"></button>
+          </div>
+        </div>
         <button id="sound" aria-pressed="false" data-t="soundoff">Sound: off</button>
         <p class="hint" data-t="soundhint">With the sound on, the download has it too.</p>
         <button id="export" class="primary" disabled data-t="export">Download MP4</button>
@@ -184,10 +210,10 @@
         <div id="status" role="status"></div>
       </section>
 
-      <footer data-t="footer">Photo loops are 12 seconds and repeat with no visible seam; a 4K one takes a few minutes. Videos are downloaded up to 60 seconds.</footer>
+      <footer data-t="footer">Photo loops repeat with no visible seam; a 4K one takes a few minutes. Videos are downloaded up to 60 seconds.</footer>
     </aside>
     <section id="stage" class="empty">
-      <div id="msg"></div>
+      <div id="msg" aria-live="polite"></div>
     </section>
   </main>
   <div id="cover" data-t="cover">Let go to open it</div>

@@ -78,8 +78,8 @@ export function createVideoLiving({ canvas, video, params, name = 'video', ascii
   const q = params;
   const num = (k, d) => { const v = Number(q.get(k)?.trim() || NaN); return Number.isFinite(v) && v > 0 ? v : d; };
   const vw = video.videoWidth, vh = video.videoHeight;
-  if (!vw || !vh) throw new LivingError('This video has no picture this browser can read.');
-  if (!Number.isFinite(video.duration) || video.duration <= 0) throw new LivingError('This video doesn\'t say how long it is, so it can\'t be made into one. Try saving it as MP4 first.');
+  if (!vw || !vh) throw new LivingError('This video has no picture this browser can read.', 'novideo');
+  if (!Number.isFinite(video.duration) || video.duration <= 0) throw new LivingError('This video doesn\'t say how long it is, so it can\'t be made into one. Try saving it as MP4 first.', 'noduration');
   const style = asciiStyle(q);
   const W = even(num('width', 1080)), H = even((W * vh) / vw);
   const fps = Math.min(60, num('fps', 30));
@@ -202,7 +202,7 @@ export function seekVideo(video, t, timeout = 10000) {
     const end = (ok) => () => {
       clearTimeout(timer);
       video.removeEventListener('seeked', done); video.removeEventListener('error', fail);
-      if (ok) resolve(); else reject(new LivingError('The video stopped reading partway.'));
+      if (ok) resolve(); else reject(new LivingError('The video stopped reading partway.', 'videostopped'));
     };
     const done = end(true), fail = end(false), timer = setTimeout(fail, timeout);
     video.addEventListener('seeked', done);

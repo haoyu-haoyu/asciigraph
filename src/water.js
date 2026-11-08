@@ -59,6 +59,7 @@ const WATER_COMMON = /* glsl */`
   // ...and by the rocks (tShore b) the water surges up and drains back,
   // uSurge whole times per loop
   uniform float uSurge;
+  uniform float uLoopS;            // the loop's length over the default 12 s
   uniform float uHaze;             // haze over the far sea, at the horizon itself (0–1)
   uniform vec2 uShoreTexel;        // one cell of tShore, in uv
   uniform vec2 uRes, uWind;
@@ -87,10 +88,13 @@ const WATER_COMMON = /* glsl */`
   // Loop-periodic fbm: each octave walks a closed circle through the noise
   // volume (whole turns per loop, faster for finer octaves), so the pattern
   // evolves rather than just translating, and returns to where it started.
+  // n whole cycles per 12 s loop, kept at that pace at any loop length (still whole: the loop closes;
+  // so what turns once per 12 s still turns once in a 6 s loop, twice as fast)
+  float per(float n) { return max(1.0, floor(n * uLoopS + 0.5)); }
   float tfbm(vec2 p, float cyc) {
     float s = 0.0, a = 0.5;
     for (int i = 0; i < 3; i++) {
-      float fi = float(i), th = TAU * uT * cyc * (fi + 1.0);
+      float fi = float(i), th = TAU * uT * per(cyc) * (fi + 1.0);
       vec2 dir = vec2(cos(fi * 2.1), sin(fi * 2.1));
       s += a * noise3(vec3(p + dir * 0.7 * cos(th), 0.7 * sin(th) + fi * 17.0));
       p = p * 2.07 + 3.1; a *= 0.5;
@@ -301,8 +305,8 @@ const WATER_COMMON = /* glsl */`
     float g = texture(tShore, at).g;
     if (g < 0.01) return vec2(0.0);
     vec2 q = isoOf(at);
-    float gust = 0.5 + 0.5 * sin(TAU * 2.0 * uT - dot(q, uCloud) * 9.0 + 2.5 * fbm(q * 3.0));
-    float flutter = sin(TAU * 5.0 * uT + 40.0 * fbm(q * 20.0));
+    float gust = 0.5 + 0.5 * sin(TAU * per(2.0) * uT - dot(q, uCloud) * 9.0 + 2.5 * fbm(q * 3.0));
+    float flutter = sin(TAU * per(5.0) * uT + 40.0 * fbm(q * 20.0));
     return uvOfIso(uCloud) * uSway * g * (0.75 * gust + 0.25 * flutter);
   }`;
 
@@ -461,7 +465,9 @@ export function buildWater(renderer, opts) {
   // keep the drifting copies close and the water sharp (see uDrift). A sea
   // seen from the shore keeps fewer: its look comes mostly from the photo's
   // own waves rolling in, and restarting them more often only adds flicker
-  const cycles = Math.max(1, Math.round(opts.cycles ?? (persp ? 6 : 18)));
+  // (all of them as many at any loop length as the default 12 s has per second)
+  const loopS = (opts.loop > 0 ? opts.loop : 12) / 12, per = (n) => Math.max(1, Math.round(n * loopS));
+  const cycles = Math.max(1, Math.round(opts.cycles ?? per(persp ? 6 : 18)));
   const onshore = opts.windGiven ? null : shore?.onshore ?? null;
   const swellRef = persp && !opts.windGiven
     ? Math.atan2((onshore != null ? Math.sin(onshore) : 0) - 0.6, onshore != null ? Math.cos(onshore) : 0)
@@ -479,7 +485,7 @@ export function buildWater(renderer, opts) {
   const spread = 1 - 0.6 * swelly;   // parallel swell: headings stay close together
   const waves = WAVE_SET.map(([da, k0]) => {
     const a = heading + da * spread, kw = k0 * scale;
-    return new THREE.Vector4(Math.cos(a), Math.sin(a), kw, Math.max(1, Math.round(1.5 * Math.sqrt(kw) * opts.speed)));
+    return new THREE.Vector4(Math.cos(a), Math.sin(a), kw, per(1.5 * Math.sqrt(kw) * opts.speed));
   });
   // the tallest the summed swell can get at amp 1 (the shader scales it by
   // amp), to normalise its height to ±1; it also bounds the swell's sideways push
@@ -491,7 +497,7 @@ export function buildWater(renderer, opts) {
   // (no water: nothing is displaced but the clouds, which mirror at the edges)
   // (in perspective the crests also rise, by up to 0.6 of the swell's height)
   // (the drift and the photo's waves rolling in both travel per cycle: see uDrift)
-  const perCycle = 6 / cycles, driftStep = 0.03 * drift * perCycle;
+  const perCycle = (6 * loopS) / cycles, driftStep = 0.03 * drift * perCycle;
   const inset = opts.skyOnly ? 0 : 0.6 * (hmax * ampEff * (persp ? 1.6 : 1) + (0.011 * churn) / scale + 0.65 * driftStep + 0.004) + (persp ? 0.007 * perCycle : 0);
   // clouds: a short drift per cycle, so the two copies never show a double edge
   const cloud = opts.cloud ?? 0, cloudSpeed = Math.max(0, opts.clouds ?? 1);
@@ -515,14 +521,14 @@ export function buildWater(renderer, opts) {
     tSky: { value: sky ? sky.tex : maskTexture(1, 1, [0], [1]) },
     uSway: { value: 0.0015 * Math.min(opts.amp, 1.4) }, uSkyShow: { value: opts.skyShow ? 1 : 0 },
     uCloud: { value: new THREE.Vector2(Math.cos(cloud), Math.sin(cloud)) },
-    uCloudDrift: { value: 0.02 * Math.min(cloudSpeed, 2) }, uCloudCycles: { value: Math.max(1, Math.round(3 * Math.max(cloudSpeed, 0.34))) },
+    uCloudDrift: { value: 0.02 * Math.min(cloudSpeed, 2) }, uCloudCycles: { value: per(3 * Math.max(cloudSpeed, 0.34)) }, uLoopS: { value: loopS },
     uHorizon: { value: found ? found.horizon : 0 },
     uPersp: { value: persp ? 1 : 0 }, uSeaLine: { value: persp ? found.seaLine : 1 },
     uHeading: { value: new THREE.Vector2(Math.cos(heading), Math.sin(heading)) },
     // (a run per cycle short enough that the drifting copies don't show a double crest)
     uWaveRun: { value: persp ? 0.06 * Math.min(opts.amp, 1.4) * perCycle : 0 }, uSwellK: { value: persp ? 0.35 : 1 },
     // (two surges a loop: one every six seconds at the default 12 s, about a real set's pace)
-    uSurge: { value: persp ? 2 : 0 }, uHaze: { value: persp ? Math.min(1, Math.max(0, opts.haze ?? 0.35)) : 0 },
+    uSurge: { value: persp ? per(2) : 0 }, uHaze: { value: persp ? Math.min(1, Math.max(0, opts.haze ?? 0.35)) : 0 },
     uShoreTexel: { value: new THREE.Vector2(1 / still.image.width, 1 / still.image.height) },
   };
   const colorMat = new THREE.ShaderMaterial({ uniforms, vertexShader: QUAD_VS, fragmentShader: WATER_FS, depthTest: false, depthWrite: false });

@@ -28,7 +28,11 @@ const COMMON = /* glsl */`
   uniform vec2 uRes, uWind;
   uniform vec3 uSheen;
   uniform float uT, uLight, uAmp;
+  uniform float uLoopS;   // the loop's length over the default 12 s
   const float TAU = 6.28318530718;
+  // n whole cycles per 12 s loop, kept at that pace at any loop length (still whole: the loop closes;
+  // so what turns once per 12 s still turns once in a 6 s loop, twice as fast)
+  float per(float n) { return max(1.0, floor(n * uLoopS + 0.5)); }
 
   float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
   // value noise repeating every per lattice cells (per must be whole numbers),
@@ -50,12 +54,12 @@ const COMMON = /* glsl */`
 
   // the sun swings around the light already in the image
   vec3 sunDirAt(float t) {
-    float az = uLight + 0.7 * sin(TAU * t) + 0.15 * sin(TAU * 2.0 * t + 1.3);
-    float el = 0.8 + 0.25 * sin(TAU * t + 2.1);
+    float az = uLight + 0.7 * sin(TAU * per(1.0) * t) + 0.15 * sin(TAU * per(2.0) * t + 1.3);
+    float el = 0.8 + 0.25 * sin(TAU * per(1.0) * t + 2.1);
     return normalize(vec3(cos(az), sin(az), el));
   }
   // warm light breaking through drifting cloud gaps, cool shade elsewhere
-  float sunPoolAt(vec2 rq, float t) { return smoothstep(0.32, 0.72, pfbm(rq * 1.3 + vec2(0.0, 5.1) - vec2(2.0 * t, 0.0), vec2(2.0, 1000.0))); }
+  float sunPoolAt(vec2 rq, float t) { return smoothstep(0.32, 0.72, pfbm(rq * 1.3 + vec2(0.0, 5.1) - vec2(2.0 * per(1.0) * t, 0.0), vec2(2.0, 1000.0))); }
   // calm: 1 where things move, 0 where painted still. Where it is held, the
   // light is the loop's first moment's; between, a blend of that and the live
   // light (a blend of two looping things loops; a slowed clock would not)
@@ -85,8 +89,8 @@ const STRAND_VS = /* glsl */`
   varying float vS, vSide, vGust, vCalm;
   const int SEG = ${SEG};
   float gustAt(vec2 rq, float t) {
-    return smoothstep(0.25, 0.9, (0.5 + 0.5 * sin(TAU * 1.6 * rq.x - TAU * 3.0 * t))
-           * (0.5 + 0.9 * pfbm(rq * 4.0 - vec2(8.0 * t, 0.0), vec2(8.0, 1000.0))));
+    return smoothstep(0.25, 0.9, (0.5 + 0.5 * sin(TAU * 1.6 * rq.x - TAU * per(3.0) * t))
+           * (0.5 + 0.9 * pfbm(rq * 4.0 - vec2(8.0 * per(1.0) * t, 0.0), vec2(8.0, 1000.0))));
   }
 
   void main() {
@@ -107,13 +111,13 @@ const STRAND_VS = /* glsl */`
     // A broad turning wave sweeps downwind, sub-schools drift through it and
     // turn at their own moments, the whole field leans left and right, and
     // each strand adds a small motion of its own
-    float sub = pfbm(rq * 2.2 - vec2(8.0 * uT, 0.0), vec2(4.0, 1000.0)) * 2.0 - 1.0;
-    float lean = 0.3 * sin(TAU * uT);
+    float sub = pfbm(rq * 2.2 - vec2(4.0 * per(2.0) * uT, 0.0), vec2(4.0, 1000.0)) * 2.0 - 1.0;
+    float lean = 0.3 * sin(TAU * per(1.0) * uT);
     // painted still: no bend, and the gust's sheen held at the first moment
     float calm = calmAt(aRoot);
     float gust = calm < 1.0 ? mix(gustAt(rq, 0.0), gustAt(rq, uT), calm) : gustAt(rq, uT);
     float amp = (1.05 + 0.6 * gust) * uAmp * calm;
-    float own = (0.12 * sin(TAU * 6.0 * uT + aParam.z) + 0.06 * sin(TAU * 9.0 * uT + aParam.z * 1.7)) * calm;
+    float own = (0.12 * sin(TAU * per(6.0) * uT + aParam.z) + 0.06 * sin(TAU * per(9.0) * uT + aParam.z * 1.7)) * calm;
     float L = aParam.x * (0.8 + 0.5 * m.g), W = aParam.y;
 
     int seg = int(aStrand.y + 0.5);
@@ -123,7 +127,7 @@ const STRAND_VS = /* glsl */`
     for (int i = 0; i <= SEG; i++) {
       float s = i == seg ? sHere : (float(i) + 0.5) / float(SEG);
       // the tip lags the root, so each turn whips up the strand
-      float wave = sin(TAU * (1.25 * rq.x + 0.3 * rq.y) - TAU * 3.0 * (uT - 0.03 * s) + 2.0 * sub);
+      float wave = sin(TAU * (1.25 * rq.x + 0.3 * rq.y) - TAU * (per(3.0) * uT - 0.09 * s) + 2.0 * sub);
       float heading = 0.62 * wave + 0.38 * sub + lean;
       // capped so a strand never folds back over its own root
       float bend = clamp(heading * amp + own, -1.45, 1.45) * pow(s, 1.1);
@@ -247,7 +251,7 @@ export function buildField(renderer, opts) {
     tStill: { value: opts.marks ? maskTexture(opts.grid.w, opts.grid.h, opts.marks.still) : maskTexture(1, 1, [0]) },
     uRes: { value: new THREE.Vector2(W, H) }, uT: { value: 0 },
     uWind: { value: new THREE.Vector2(Math.cos(opts.wind), Math.sin(opts.wind)) },
-    uLight: { value: opts.light }, uAmp: { value: opts.amp },
+    uLight: { value: opts.light }, uAmp: { value: opts.amp }, uLoopS: { value: (opts.loop > 0 ? opts.loop : 12) / 12 },
     uSheen: { value: new THREE.Vector3(...opts.maps.tint).multiplyScalar(0.36) },
   };
   const scene = new THREE.Scene();

@@ -23,12 +23,20 @@ const ZH = {
   wide: (w) => `宽 ${w}`, exportwith: (d, s) => `下载 MP4 · ${d} · ${s} 秒`, soundhint: '开着声音时，下载的视频也带声音。', cover: '松手即可打开',
   size: '尺寸', photo: '照片原比例', flowview: '原画面',
   soundoff: '声音：关', soundon: '声音：开', export: '下载 MP4',
-  footer: '照片循环 12 秒，首尾无缝衔接，4K 要几分钟。视频最长下载 60 秒。',
+  footer: '照片循环首尾无缝衔接，4K 要几分钟。视频最长下载 60 秒。',
+  rescene: '不对？手动选场景', more: '更多设置', amp: '运动强度', amplow: '轻', ampmid: '正常', amphigh: '强',
+  looplen: '循环时长', s6: '6 秒', s12: '12 秒', s20: '20 秒', focus: '保留哪一部分', middle: '中间', left: '左边', right: '右边', top: '上面', bottom: '下面',
+  err_noscene: (g, w) => `认不出这张照片是哪种场景（绿色占 ${g}，水面占 ${w}）。它是哪一种？`,
+  err_nosky: '照片顶部没有找到天空，不能用“天空和云”。它是哪一种？',
+  err_nocharset: '请至少输入一个字符。',
+  err_novideo: '这个浏览器读不出这段视频的画面。',
+  err_noduration: '这段视频没有标明时长，处理不了。可以先另存为 MP4 再试。',
+  err_videostopped: '视频读到一半停了，请再试一次。',
   making: '正在生成', encoding: (d, n) => `正在编码 ${d}/${n}`, saved: '已生成：', noEncode: '这个浏览器不能直接导出视频，请用新版 Chrome、Edge 或 Safari。',
   asciistyle: 'ASCII 样式', ink: '颜色', inkphoto: '照片原色', inkgreen: '绿色荧光', inkamber: '琥珀色', inkwhite: '白色', inkpaper: '白底黑字',
   chars: '字符', charsstrokes: '顺着运动方向的笔画', charsclassic: '经典 ASCII  .:-=+*#@', charsblocks: '明暗方块 ░▒▓█', charsbraille: '盲文点阵 ⣿', charscustom: '自定义字符…',
   charset: '用哪些字符（顺序随意）', cell: '字符大小', bg: '背景', bgglow: '底光', bgplain: '纯黑',
-  loadFail: '这张图片打不开。', videoFail: '这个视频打不开，换成 MP4 试试。', clipsoundoff: '原声：关', soundTooBig: '（没有声音：文件太大或太长，读不了它的声音）', clipsoundon: '原声：开', pickScene: '如果它是其中一种，请在"场景"里选上。', soundNote: '（含声音）',
+  loadFail: '这张图片打不开。', videoFail: '这个视频打不开，换成 MP4 试试。', clipsoundoff: '原声：关', soundTooBig: '（没有声音：文件太大或太长，读不了它的声音）', clipsoundon: '原声：开', soundNote: '（含声音）',
 };
 const zh = /^zh/i.test(navigator.language);
 const t = (k, ...a) => { const v = zh ? ZH[k] : null; return typeof v === 'function' ? v(...a) : v; };
@@ -44,6 +52,10 @@ const stage = $('stage'), msg = $('msg'), status = $('status'), bar = $('progres
 const DEFAULT_STYLE = { ink: 'photo', bg: 'glow', cell: '1', chars: 'strokes', charset: '' };
 const style = { ...DEFAULT_STYLE };
 let applied = { ...DEFAULT_STYLE };   // the last style the canvas took: what the preview and the download use
+// a photo's motion, loop length and, with a size, which part of it to keep (the defaults go unsaid)
+const DEFAULT_MORE = { amp: '1', loop: '12', focus: '0.5' };
+const more = { ...DEFAULT_MORE };
+let lastSides = null;
 let photo = null, clip = null, name = 'photo', living = null, mode = 'ascii', stopSound = null, start = performance.now(), busy = false;
 const phase = () => (living ? (((performance.now() - start) / 1000) % living.loop) / living.loop : 0);
 
@@ -55,12 +67,25 @@ function widths() {
   return { full, k: Math.max(1, Math.round(full / PREVIEW)) };
 }
 
+// with a size, whether the crop cuts the photo's sides (else its top and bottom); null when it cuts nothing
+function cutsSides() {
+  const size = clip || !photo ? '' : $('size').value;
+  if (!size) return null;
+  const [sw, sh] = SIZES[size], a = photo.width / photo.height;
+  return Math.abs(a - sw / sh) < 0.01 ? null : a > sw / sh;
+}
+
 function options(full) {
   const p = new URLSearchParams();
   // (a video has no scene or size: it keeps its own shape)
   if ($('scene').value && !clip) p.set('scene', $('scene').value);
   const size = clip ? '' : $('size').value;
   if (size) p.set('size', size);
+  if (!clip) {
+    for (const k of ['amp', 'loop']) if (more[k] !== DEFAULT_MORE[k]) p.set(k, more[k]);
+    const sides = cutsSides();
+    if (sides !== null && more.focus !== DEFAULT_MORE.focus) p.set('focus', sides ? `${more.focus},0.5` : `0.5,${more.focus}`);
+  }
   // the preview keeps the shape at a smaller width; the download is full size
   for (const [k, v] of Object.entries(applied)) if (v !== DEFAULT_STYLE[k] && !(k === 'bg' && applied.ink === 'paper')) p.set(k, v);
   // a video's download keeps its own frame rate, once the preview has measured it
@@ -75,6 +100,17 @@ function rebuild() {
   if (!photo && !clip) return;
   stopSound?.(); stopSound = null; setSoundLabel();
   for (const id of ['scene', 'size']) $(id).closest('label').hidden = !!clip;
+  $('more').hidden = $('rescene').hidden = !!clip;
+  const sides = cutsSides();
+  // (a choice of side doesn't carry over to top and bottom, or back)
+  if (sides !== null && lastSides !== null && sides !== lastSides && more.focus !== DEFAULT_MORE.focus) {
+    more.focus = DEFAULT_MORE.focus;
+    for (const o of $('focus').children) o.setAttribute('aria-pressed', String(o.dataset.v === more.focus));
+    return rebuild();
+  }
+  if (sides !== null) lastSides = sides;
+  $('focusrow').hidden = sides === null;
+  if (sides !== null) [$('focus').children[0].textContent, $('focus').children[2].textContent] = sides ? [say('left', 'Left'), say('right', 'Right')] : [say('top', 'Top'), say('bottom', 'Bottom')];
   living?.dispose();
   stage.querySelector('canvas')?.remove();
   const canvas = document.createElement('canvas');
@@ -93,10 +129,38 @@ function rebuild() {
     $('export').textContent = say('export', 'Download MP4');
     clip?.video.pause();
     $('export').disabled = true;
-    // the page's advice names URL options; here the answer is the Scene list
-    if (e instanceof LivingError) msg.innerHTML = e.html.replace(/ If it is one of them.*$/, ` ${say('pickScene', 'If it is one of them, pick it under Scene.')}`);
-    else { msg.textContent = String(e.message || e); console.error(e); }
+    showError(e);
   }
+}
+
+// an error in the page's language; when the scene couldn't be told (or there
+// is no sky for the one asked), the scenes to pick from follow it
+const pct = (v) => `${Math.round((v || 0) * 100)}%`;
+const ERRORS = {
+  noscene: (d) => say('err_noscene', (g, w) => `Couldn't tell what this photo shows (green ${g}, water ${w} of the frame). Which is it?`, pct(d.grass), pct(d.water)),
+  nosky: () => say('err_nosky', "No sky found along the top of this photo, so it can't be a sky scene. Which is it?"),
+  nocharset: () => say('err_nocharset', 'Type at least one character to use.'),
+  novideo: () => say('err_novideo', "This browser can't read the picture in this video."),
+  noduration: () => say('err_noduration', "This video doesn't say how long it is. Try saving it as MP4 first."),
+  videostopped: () => say('err_videostopped', 'The video stopped reading partway: try again.'),
+};
+function errorText(e) {
+  if (!(e instanceof LivingError)) console.error(e);
+  return e instanceof LivingError && ERRORS[e.code] ? ERRORS[e.code](e.data) : String(e?.message || e);
+}
+function showError(e) {
+  msg.textContent = errorText(e);
+  if (!['noscene', 'nosky'].includes(e?.code) || !photo) return;
+  const picks = document.createElement('div');
+  picks.className = 'picks';
+  for (const o of $('scene').options) {
+    if (!o.value || (e.code === 'nosky' && o.value === 'sky')) continue;
+    const b = document.createElement('button');
+    b.textContent = o.textContent;
+    b.onclick = () => { $('scene').value = o.value; rebuild(); $('scene').focus(); };
+    picks.append(b);
+  }
+  msg.append(picks);
 }
 
 // what is loaded, in words (the scene, or the video's length; the numbers
@@ -127,6 +191,7 @@ function take(src, fileName) {
   mediaURL = src.startsWith('blob:') ? src : null;
   if (clip) { clip.video.pause(); clip.video.removeAttribute('src'); clip.video.load(); }
   photo = clip = null; name = fileName;
+  $('scene').value = '';   // (a scene picked for the last photo is guessed afresh for this one)
 }
 async function usePhoto(src, fileName) {
   const mine = ++pick;
@@ -194,6 +259,17 @@ for (const s of SAMPLES) {
   samples.append(b);
 }
 for (const id of ['scene', 'size']) $(id).onchange = rebuild;
+// the guess was wrong: straight to the Scene list
+$('rescene').onclick = () => { $('scene').focus(); try { $('scene').showPicker(); } catch { /* (not every browser opens it from a click) */ } };
+for (const id of ['amp', 'loop', 'focus']) {
+  for (const b of $(id).children) {
+    b.onclick = () => {
+      more[id] = b.dataset.v;
+      for (const o of $(id).children) o.setAttribute('aria-pressed', String(o === b));
+      rebuild();
+    };
+  }
+}
 
 // view and sound
 for (const m of ['ascii', 'flow']) {
@@ -212,9 +288,10 @@ function restyle() {
   try {
     if (living) living.setAscii(style); else asciiStyle(new URLSearchParams(style));   // (checked even before there is a photo)
     applied = { ...style };
-    msg.textContent = '';
+    // (a photo that made nothing tries again, which puts back its own error and scenes to pick)
+    if (living || !photo) msg.textContent = ''; else rebuild();
   } catch (e) {
-    if (e instanceof LivingError) msg.innerHTML = e.html; else { msg.textContent = String(e.message || e); console.error(e); }
+    showError(e);
   }
 }
 for (const id of ['ink', 'cell', 'bg']) {
@@ -289,8 +366,7 @@ $('export').onclick = async () => {
     status.append(a, sound ? say('soundNote', ' (with sound)') : '');
     a.click();
   } catch (e) {
-    console.error(e);
-    status.textContent = String(e.message || e);
+    status.textContent = errorText(e);
   } finally {
     full?.dispose();
     busy = false; $('export').disabled = !living;
@@ -328,8 +404,7 @@ async function exportVideo() {
     status.append(a, sound ? say('soundNote', ' (with sound)') : tooBig ? say('soundTooBig', ' (no sound: the file is too big or too long to read its sound)') : '');
     a.click();
   } catch (e) {
-    console.error(e);
-    status.textContent = String(e.message || e);
+    status.textContent = errorText(e);
   } finally {
     full?.dispose();
     video?.removeAttribute('src'); video?.load();

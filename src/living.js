@@ -28,9 +28,12 @@ export const SIZES = {
   '1080p': [1920, 1080], '1440p': [2560, 1440], '4k': [3840, 2160],
 };
 
-// Why nothing was made. html is the message to show, written for a person.
+// Why nothing was made. html is the message to show, written for a person;
+// code names the ones a page may word in its own language (demo.js), with data
+// for the wording: noscene {grass, water} (shares 0–1), nosky, nocharset,
+// novideo, noduration, videostopped
 export class LivingError extends Error {
-  constructor(html) { super(html.replace(/<[^>]+>/g, '')); this.html = html; }
+  constructor(html, code = null, data = {}) { super(html.replace(/<[^>]+>/g, '')); this.html = html; this.code = code; this.data = data; }
 }
 
 const even = (v) => Math.max(2, Math.round(v / 2) * 2); // H.264 wants even sizes
@@ -99,7 +102,8 @@ export function createLiving({ canvas, image, params, marksImg = null, name = 'p
         : `No sky found at the top of this image (it needs sky along most of the top edge), so nothing was generated.`)
       : `This doesn't look like grass, water or sky (green ${pct(guess.shares.grass)}, water ${pct(guess.shares.water)} of the frame), so nothing was generated. `
         + `If it is one of them, open it with <code>&scene=grass</code>, <code>&scene=water</code> or <code>&scene=sky</code>`
-        + ` (a waterfall: <code>&scene=waterfall</code>; steam or smoke: <code>&scene=steam</code>; flames: <code>&scene=fire</code>; stars or lights at night: <code>&scene=twinkle</code>).`);
+        + ` (a waterfall: <code>&scene=waterfall</code>; steam or smoke: <code>&scene=steam</code>; flames: <code>&scene=fire</code>; stars or lights at night: <code>&scene=twinkle</code>).`,
+      asked === 'sky' ? (skyMode === 'off' ? null : 'nosky') : 'noscene', guess?.shares ?? {});
   }
   const flowing = scene !== 'grass';   // water and sky run on the water shader, waterfalls, steam, fire and twinkle on their own
   const loop = num('loop', 12), fps = num('fps', 30);
@@ -124,11 +128,11 @@ export function createLiving({ canvas, image, params, marksImg = null, name = 'p
           marksImg: marksImg ? cropTo(marksImg, crop) : null, show })
       : flowing
       ? buildWater(renderer, {
-          ...common, windGiven, stats: analyseWater(image, sky), churn: num('churn', null), drift: num('drift', null),
+          ...common, loop, windGiven, stats: analyseWater(image, sky), churn: num('churn', null), drift: num('drift', null),
           wavelength: num('wavelength', null), cycles: num('cycles', null), speed: num('speed', 1), shore: q.get('shore')?.trim().toLowerCase(),
           grid, sky, skyOnly: scene === 'sky', skyShow: skyMode === 'show', cloud: rad(num('cloud', 0)), clouds: num('clouds', 1), haze: num('haze', null), marks, foundSky,
         })
-      : buildField(renderer, { ...common, density: num('density', 1), marks, grid });
+      : buildField(renderer, { ...common, loop, density: num('density', 1), marks, grid });
     return { field, post: makePost(renderer, W, H, field, style, asciiScale) };
   };
   let parts;
@@ -176,7 +180,7 @@ export function asciiStyle(q) {
   const style = { ink: pick('ink', Object.keys(INKS)), bg: pick('bg', BGS), cell: pick('cell', CELLS), chars: pick('chars', CHARS), charset: q.get('charset') ?? '' };
   // characters of your own: charset alone is enough to ask for them
   if (style.charset.trim() && !q.get('chars')) style.chars = 'custom';
-  if (style.chars === 'custom' && !style.charset.trim()) throw new LivingError('<code>chars=custom</code> needs the characters: <code>charset= .:-=+*#%@</code>, lightest first or in any order.');
+  if (style.chars === 'custom' && !style.charset.trim()) throw new LivingError('<code>chars=custom</code> needs the characters: <code>charset= .:-=+*#%@</code>, lightest first or in any order.', 'nocharset');
   return style;
 }
 
