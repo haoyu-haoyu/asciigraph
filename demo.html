@@ -31,7 +31,8 @@
     .samples { display: flex; gap: 6px; flex-wrap: wrap; }
     .samples button { font-size: 12px; padding: 4px 8px; }
     #stage { position: relative; display: grid; place-items: center; padding: 20px; min-height: 60vh; }
-    #stage canvas { max-width: 100%; max-height: calc(100vh - 40px); display: block; }
+    /* (shown 720 wide whatever its pixel size, which follows the download's: demo.js) */
+    #stage canvas { width: 720px; max-width: 100%; max-height: calc(100vh - 40px); object-fit: contain; display: block; }
     #msg { position: absolute; inset: auto 20px 20px 20px; text-align: center; color: var(--warn); }
     #msg code { color: var(--text); }
     #progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; display: none; }

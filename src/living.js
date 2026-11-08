@@ -39,8 +39,9 @@ const rad = (deg) => (deg * Math.PI) / 180;
 // canvas: where it draws; image: the photo (an <img>, canvas or bitmap);
 // params: the options (URLSearchParams or anything with get()); marksImg:
 // painted marks, the shape of the uncropped photo, or null; name: the
-// photo's file name, for naming exports.
-export function createLiving({ canvas, image, params, marksImg = null, name = 'photo' }) {
+// photo's file name, for naming exports; asciiScale: characters that many
+// times their size (makePost).
+export function createLiving({ canvas, image, params, marksImg = null, name = 'photo', asciiScale = 1 }) {
   const q = params;
   // a number from the options, or d when it is missing, 'auto' or not a number
   const num = (k, d) => { const s = q.get(k)?.trim(), v = Number(s || NaN); return Number.isFinite(v) ? v : d; };
@@ -128,7 +129,7 @@ export function createLiving({ canvas, image, params, marksImg = null, name = 'p
           grid, sky, skyOnly: scene === 'sky', skyShow: skyMode === 'show', cloud: rad(num('cloud', 0)), clouds: num('clouds', 1), haze: num('haze', null), marks, foundSky,
         })
       : buildField(renderer, { ...common, density: num('density', 1), marks, grid });
-    return { field, post: makePost(renderer, W, H, field, style) };
+    return { field, post: makePost(renderer, W, H, field, style, asciiScale) };
   };
   let parts;
   try {

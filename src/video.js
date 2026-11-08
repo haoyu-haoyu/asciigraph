@@ -72,8 +72,9 @@ const COPY_FS = /* glsl */`
   void main() { gl_FragColor = texture2D(tSrc, vUv); }`;
 
 // canvas: where it draws; video: a <video> with its metadata loaded; params:
-// the options (width, fps and the ASCII look: ink, bg, cell, chars, charset).
-export function createVideoLiving({ canvas, video, params, name = 'video' }) {
+// the options (width, fps and the ASCII look: ink, bg, cell, chars, charset);
+// asciiScale: characters that many times their size (makePost).
+export function createVideoLiving({ canvas, video, params, name = 'video', asciiScale = 1 }) {
   const q = params;
   const num = (k, d) => { const v = Number(q.get(k)?.trim() || NaN); return Number.isFinite(v) && v > 0 ? v : d; };
   const vw = video.videoWidth, vh = video.videoHeight;
@@ -143,7 +144,7 @@ export function createVideoLiving({ canvas, video, params, name = 'video' }) {
     scene, camera,
     renderDirection(target) { copyMat.uniforms.tSrc.value = flowLast.texture; pass(copyMat, target); },
   };
-  const post = makePost(renderer, W, H, field, style);
+  const post = makePost(renderer, W, H, field, style, asciiScale);
 
   // Which frame is showing. A playing video's clock moves on every screen
   // refresh, not once a frame, so while it plays the frames it presents are

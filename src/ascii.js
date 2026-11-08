@@ -154,7 +154,12 @@ export class AsciiStrokes {
     const atlas = buildAtlas(style);
     this.atlas = atlas;
     const cell = new THREE.Vector2(cw, ch), res = new THREE.Vector2(W, H);
-    const area = (cw * ch).toFixed(1);
+    // a cell is read at most 15×21 points, evenly spread (every pixel up to 3×
+    // cells; the larger cells of a big download take a sample of them, so the
+    // shader's loop stays small enough for any GPU to compile)
+    const nx = Math.min(cw, 15), ny = Math.min(ch, 21);
+    const step = `vec2(${(cw / nx).toFixed(4)}, ${(ch / ny).toFixed(4)})`;
+    const area = (nx * ny).toFixed(1);
     const strokes = style.chars === 'strokes', braille = style.chars === 'braille';
 
     this.reduceMat = new THREE.ShaderMaterial({
@@ -166,8 +171,8 @@ export class AsciiStrokes {
           vec2 cell = floor(gl_FragCoord.xy);
           vec3 sum = vec3(0.0), mx = vec3(0.0);
           vec3 dir = vec3(0.0);
-          for (int y = 0; y < ${ch}; y++) for (int x = 0; x < ${cw}; x++) {
-            vec2 uv = (cell * uCell + vec2(x, y) + 0.5) / uRes;
+          for (int y = 0; y < ${ny}; y++) for (int x = 0; x < ${nx}; x++) {
+            vec2 uv = (cell * uCell + (vec2(x, y) + 0.5) * ${step}) / uRes;
             vec3 c = clamp(texture2D(tColor, uv).rgb, 0.0, 16.0);
             sum += c; mx = max(mx, c);
             dir += texture2D(tDir, uv).rgb;

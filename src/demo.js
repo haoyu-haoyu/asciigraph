@@ -1,12 +1,15 @@
 // The drop-a-photo page (demo.html): everything runs here in the browser,
 // the photo (or video, drawn in ASCII: video.js) is never uploaded, and the MP4 is encoded here too (encode.js),
 // so the page works as plain static files.
-import { createLiving, LivingError, asciiStyle } from './living.js';
+import { createLiving, LivingError, asciiStyle, SIZES } from './living.js';
 import { encodeLoop, encodeFrames, canEncode } from './encode.js';
 import { createVideoLiving, seekVideo, videoSound, soundTooBig } from './video.js';
 import { sceneSound, playSound } from './sound.js';
 
-const PREVIEW = 720;   // preview width; the download is full size
+// The download is full size; the preview is about PREVIEW wide, a whole
+// fraction (1/k) of it, and the download draws its characters k times as big,
+// so it looks just like the preview, only sharper.
+const PREVIEW = 720;
 const SAMPLES = [
   { file: 'examples/beach.png', en: 'Beach', zh: '海滩' },
   { file: 'examples/grass.png', en: 'Grass', zh: '草地' },
@@ -41,6 +44,14 @@ let applied = { ...DEFAULT_STYLE };   // the last style the canvas took: what th
 let photo = null, clip = null, name = 'photo', living = null, mode = 'ascii', stopSound = null, start = performance.now(), busy = false;
 const phase = () => (living ? (((performance.now() - start) / 1000) % living.loop) / living.loop : 0);
 
+// the download's width, and k: how many times the preview's
+function widths() {
+  const size = clip ? '' : $('size').value;
+  const [w, h] = clip ? [clip.video.videoWidth, clip.video.videoHeight] : [photo.width, photo.height];
+  const full = size ? SIZES[size][0] : w >= h ? 1440 : 1080;
+  return { full, k: Math.max(1, Math.round(full / PREVIEW)) };
+}
+
 function options(full) {
   const p = new URLSearchParams();
   // (a video has no scene or size: it keeps its own shape)
@@ -49,11 +60,11 @@ function options(full) {
   if (size) p.set('size', size);
   // the preview keeps the shape at a smaller width; the download is full size
   for (const [k, v] of Object.entries(applied)) if (v !== DEFAULT_STYLE[k] && !(k === 'bg' && applied.ink === 'paper')) p.set(k, v);
-  const [w, h] = clip ? [clip.video.videoWidth, clip.video.videoHeight] : [photo.width, photo.height];
   // a video's download keeps its own frame rate, once the preview has measured it
   if (full && clip && living?.sourceFps) p.set('fps', living.sourceFps);
-  if (!full) p.set('width', PREVIEW);
-  else if (!size) p.set('width', w >= h ? 1440 : 1080);
+  const { full: fw, k } = widths();
+  if (!full) p.set('width', Math.round(fw / k));
+  else if (!size) p.set('width', fw);
   return p;
 }
 
@@ -227,7 +238,7 @@ $('export').onclick = async () => {
   const canvas = document.createElement('canvas');
   let full = null;
   try {
-    full = createLiving({ canvas, image: photo, params: options(true), name });
+    full = createLiving({ canvas, image: photo, params: options(true), name, asciiScale: widths().k });
     const sound = stopSound ? soundFor(full) : null;
     const blob = await encodeLoop(full, {
       mode, sound,
@@ -255,14 +266,14 @@ $('export').onclick = async () => {
 async function exportVideo() {
   // (its own URL of the file: picking another file meanwhile lets go of the preview's)
   // (everything read now: the view, or even the file, may change while it runs)
-  const { file } = clip, withSound = !clip.video.muted, src = URL.createObjectURL(file), params = options(true), look = mode;
+  const { file } = clip, withSound = !clip.video.muted, src = URL.createObjectURL(file), params = options(true), look = mode, { k } = widths();
   busy = true; $('export').disabled = true;
   bar.style.display = 'block'; bar.firstElementChild.style.width = '0';
   status.textContent = say('making', 'Making');
   let full = null, video = null;
   try {
     video = await loadVideo(src);
-    full = createVideoLiving({ canvas: document.createElement('canvas'), video, params, name: file.name });
+    full = createVideoLiving({ canvas: document.createElement('canvas'), video, params, name: file.name, asciiScale: k });
     const sound = withSound ? await videoSound(file, full.frames / full.fps, video.duration) : null;
     const tooBig = withSound && !sound && soundTooBig(file, video.duration);
     const last = video.duration - 1e-3;

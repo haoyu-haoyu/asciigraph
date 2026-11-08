@@ -20,10 +20,13 @@ const FINAL_FS = /* glsl */`
     gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
   }`;
 
-export function makePost(renderer, W, H, field, style) {
+// asciiScale: how many times larger the characters are drawn than the style
+// says (a download k times the preview's width uses k, so it looks the same)
+export function makePost(renderer, W, H, field, style, asciiScale = 1) {
   const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
   const dirRT = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType });
-  let ascii = new AsciiStrokes(renderer, W, H, style);
+  const scaled = (s) => ({ ...s, cell: s.cell * asciiScale });
+  let ascii = new AsciiStrokes(renderer, W, H, scaled(style));
   const finalMat = new THREE.ShaderMaterial({
     uniforms: { tScene: { value: rt.texture }, uFrame: { value: 0 } },
     vertexShader: QUAD_VS, fragmentShader: FINAL_FS, depthTest: false, depthWrite: false,
@@ -38,6 +41,7 @@ export function makePost(renderer, W, H, field, style) {
     get ascii() { return ascii; },   // (a handle for debugging in the console)
     // a new ASCII style: the ink and background at once, new cells or characters by a new layer
     setAsciiStyle(next) {
+      next = scaled(next);
       if (ascii.needsRebuild(next)) { const old = ascii; ascii = new AsciiStrokes(renderer, W, H, next); old.dispose(); }
       else ascii.setColours(next);
     },
