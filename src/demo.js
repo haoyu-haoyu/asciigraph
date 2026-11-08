@@ -18,9 +18,12 @@ const ZH = {
   tagline: '拖进一张照片，它就会动起来，变成无缝循环；拖进一段视频，它会变成 ASCII 动画。文件不会离开你的浏览器。',
   drop: '把照片或视频拖到这里，或点击选择', or: '或者试试：', scene: '场景', auto: '按照片自动判断',
   water: '水面、海、河', sky: '天空和云', grass: '草地、田野', waterfall: '瀑布', steam: '蒸汽、烟、雾', fire: '火焰、蜡烛', twinkle: '星空、夜景灯光',
-  size: '尺寸', photo: '照片原比例', flowview: '照片',
+  step1: '选一张照片或一段视频', step2: '选效果', step3: '下载', details: '详细参数', view: '显示为',
+  detected: (s) => `自动识别：${s}`, videosum: (s, d) => d ? `视频 · 下载前 ${s} 秒（共 ${d} 秒）` : `视频 · ${s} 秒`,
+  wide: (w) => `宽 ${w}`, exportwith: (d, s) => `下载 MP4 · ${d} · ${s} 秒`, soundhint: '开着声音时，下载的视频也带声音。', cover: '松手即可打开',
+  size: '尺寸', photo: '照片原比例', flowview: '原画面',
   soundoff: '声音：关', soundon: '声音：开', export: '下载 MP4',
-  footer: '照片：每段循环 12 秒，首尾无缝衔接，下载的尺寸按你选的来，4K 要几分钟。视频：最长导出 60 秒，可以带上原声。',
+  footer: '照片循环 12 秒，首尾无缝衔接，4K 要几分钟。视频最长下载 60 秒。',
   making: '正在生成', encoding: (d, n) => `正在编码 ${d}/${n}`, saved: '已生成：', noEncode: '这个浏览器不能直接导出视频，请用新版 Chrome、Edge 或 Safari。',
   asciistyle: 'ASCII 样式', ink: '颜色', inkphoto: '照片原色', inkgreen: '绿色荧光', inkamber: '琥珀色', inkwhite: '白色', inkpaper: '白底黑字',
   chars: '字符', charsstrokes: '顺着运动方向的笔画', charsclassic: '经典 ASCII  .:-=+*#@', charsblocks: '明暗方块 ░▒▓█', charsbraille: '盲文点阵 ⣿', charscustom: '自定义字符…',
@@ -78,18 +81,36 @@ function rebuild() {
   stage.prepend(canvas);
   msg.innerHTML = '';
   try {
+    stage.classList.remove('empty');
     living = clip ? createVideoLiving({ canvas, video: clip.video, params: options(false), name }) : createLiving({ canvas, image: photo, params: options(false), name });
     start = performance.now();
     $('export').disabled = busy || !canEncode();
-    status.textContent = canEncode() ? living.info : say('noEncode', "This browser can't make video files: try a recent Chrome, Edge or Safari.");
+    showCurrent();
+    if (!busy) status.textContent = canEncode() ? '' : say('noEncode', "This browser can't make video files: try a recent Chrome, Edge or Safari.");
   } catch (e) {
-    living = null; canvas.remove();
+    living = null; canvas.remove(); stage.classList.add('empty');
+    $('current').hidden = true;
+    $('export').textContent = say('export', 'Download MP4');
     clip?.video.pause();
     $('export').disabled = true;
     // the page's advice names URL options; here the answer is the Scene list
     if (e instanceof LivingError) msg.innerHTML = e.html.replace(/ If it is one of them.*$/, ` ${say('pickScene', 'If it is one of them, pick it under Scene.')}`);
     else { msg.textContent = String(e.message || e); console.error(e); }
   }
+}
+
+// what is loaded, in words (the scene, or the video's length; the numbers
+// under Details), and what the download will be
+const sceneName = (s) => $('scene').querySelector(`option[value="${s}"]`)?.textContent ?? s;
+function showCurrent() {
+  $('current').hidden = false;
+  $('curname').textContent = name;
+  const secs = Math.max(1, Math.round(clip ? living.seconds : living.loop)), whole = clip ? Math.round(clip.video.duration) : 0;
+  $('cursum').textContent = clip ? say('videosum', (s, d) => (d ? `Video · the first ${s} s of ${d} s` : `Video · ${s} s`), secs, whole > secs ? whole : 0)
+    : $('scene').value ? sceneName(living.scene) : say('detected', (s) => `Looks like: ${s}`, sceneName(living.scene));
+  $('info').textContent = living.info;
+  const size = clip ? '' : $('size').value, dims = size ? SIZES[size].join('×') : say('wide', (w) => `${w} wide`, widths().full);
+  $('export').textContent = say('exportwith', (d, s) => `Download MP4 · ${d} · ${s} s`, dims, secs);
 }
 
 function tick() {
@@ -154,8 +175,16 @@ const fileInput = $('file'), drop = $('drop');
 drop.onclick = () => fileInput.click();
 drop.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } };
 fileInput.onchange = () => { useFile(fileInput.files[0]); fileInput.value = ''; };
-for (const ev of ['dragenter', 'dragover']) addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); });
-for (const ev of ['dragleave', 'drop']) addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); });
+// (a cover over the whole page while a file is dragged over it; enter and
+// leave fire for every element crossed, so they are counted, and a leave that
+// never arrives, from an element removed mid-drag, is caught by dragover going quiet)
+let over = 0, quiet = 0;
+const dragging = (n) => { over = n; drop.classList.toggle('over', n > 0); document.body.classList.toggle('dragging', n > 0); };
+const files = (e) => e.dataTransfer?.types.includes('Files');
+addEventListener('dragenter', (e) => { e.preventDefault(); if (files(e)) dragging(over + 1); });
+addEventListener('dragover', (e) => { e.preventDefault(); if (!files(e)) return; dragging(Math.max(over, 1)); clearTimeout(quiet); quiet = setTimeout(() => dragging(0), 1200); });
+addEventListener('dragleave', (e) => { e.preventDefault(); if (files(e)) dragging(Math.max(0, over - 1)); });
+addEventListener('drop', (e) => { e.preventDefault(); dragging(0); });
 addEventListener('drop', (e) => useFile([...e.dataTransfer.files].find((x) => x.type.startsWith('image/') || isVideo(x))));
 const samples = document.querySelector('.samples');
 for (const s of SAMPLES) {
@@ -228,12 +257,20 @@ $('sound').onclick = () => {
   setSoundLabel();
 };
 
+// the bar follows every frame; the words (read out by screen readers) every tenth of the way
+function progress(d, n) {
+  const pct = Math.round((100 * d) / n);
+  bar.firstElementChild.style.width = `${pct}%`;
+  if (Math.floor(pct / 10) !== Math.floor(+bar.getAttribute('aria-valuenow') / 10) || d === n) status.textContent = say('encoding', (a, b) => `Encoding ${a}/${b}`, d, n);
+  bar.setAttribute('aria-valuenow', pct);
+}
+
 // download: built again at full size on a canvas of its own
 $('export').onclick = async () => {
   if ((!photo && !clip) || busy) return;
   if (clip) { exportVideo(); return; }
   busy = true; $('export').disabled = true;
-  bar.style.display = 'block'; bar.firstElementChild.style.width = '0';
+  bar.style.display = 'block'; bar.firstElementChild.style.width = '0'; bar.setAttribute('aria-valuenow', 0);
   status.textContent = say('making', 'Making');
   const canvas = document.createElement('canvas');
   let full = null;
@@ -242,7 +279,7 @@ $('export').onclick = async () => {
     const sound = stopSound ? soundFor(full) : null;
     const blob = await encodeLoop(full, {
       mode, sound,
-      onProgress: (d, n) => { bar.firstElementChild.style.width = `${(100 * d) / n}%`; status.textContent = say('encoding', (a, b) => `Encoding ${a}/${b}`, d, n); },
+      onProgress: progress,
     });
     const file = `${full.tag}-${mode}.mp4`;
     const a = document.createElement('a');
@@ -268,7 +305,7 @@ async function exportVideo() {
   // (everything read now: the view, or even the file, may change while it runs)
   const { file } = clip, withSound = !clip.video.muted, src = URL.createObjectURL(file), params = options(true), look = mode, { k } = widths();
   busy = true; $('export').disabled = true;
-  bar.style.display = 'block'; bar.firstElementChild.style.width = '0';
+  bar.style.display = 'block'; bar.firstElementChild.style.width = '0'; bar.setAttribute('aria-valuenow', 0);
   status.textContent = say('making', 'Making');
   let full = null, video = null;
   try {
@@ -281,7 +318,7 @@ async function exportVideo() {
       frames: full.frames, mode: look, sound,
       // (mid-frame, so rounding never lands on the frame before)
       draw: async (i) => { await seekVideo(video, Math.min((i + 0.5) / full.fps, last)); full.draw(look, i); },
-      onProgress: (d, n) => { bar.firstElementChild.style.width = `${(100 * d) / n}%`; status.textContent = say('encoding', (a, b) => `Encoding ${a}/${b}`, d, n); },
+      onProgress: progress,
     });
     const name2 = `${full.tag}-${look}.mp4`;
     const a = document.createElement('a');

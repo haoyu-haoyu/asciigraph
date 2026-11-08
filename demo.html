@@ -6,38 +6,57 @@
   <title>asciigraph · try it</title>
   <meta name="description" content="Drop in a photo: water, skies, grass, waterfalls, steam, fire and starlight come to life as a seamless loop and an ASCII animation, all in your browser.">
   <style>
-    :root { --bg: #0c0e0b; --panel: #151912; --line: #2a3123; --text: #dfe8d2; --dim: #8d9a80; --accent: #b9e07a; --warn: #f0b26a; }
+    :root { --bg: #0c0e0b; --panel: #151912; --raised: #1b2017; --line: #2a3123; --text: #dfe8d2; --dim: #8d9a80; --accent: #b9e07a; --warn: #f0b26a; }
     * { box-sizing: border-box; }
     html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "PingFang SC", sans-serif; }
-    main { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
-    aside { padding: 20px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; background: var(--panel); }
+    main { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+    aside { padding: 20px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 18px; background: var(--panel); }
     h1 { margin: 0; font: 600 18px/1.2 Menlo, monospace; color: var(--accent); }
-    h1 small { display: block; margin-top: 6px; font: 13px/1.4 system-ui, sans-serif; color: var(--dim); }
+    .tagline { margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: var(--dim); }
+    /* the three steps */
+    .step { display: grid; gap: 10px; }
+    .step + .step { padding-top: 16px; border-top: 1px solid var(--line); }
+    h2 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    h2 b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 600 11px/1 Menlo, monospace; color: #11170a; background: var(--accent); }
     label { display: grid; gap: 4px; font-size: 12px; color: var(--dim); }
     .lbl { display: block; margin-bottom: 4px; font-size: 12px; color: var(--dim); }
+    .hint { margin: -4px 0 0; font-size: 12px; line-height: 1.4; color: var(--dim); }
     fieldset { margin: 0; min-width: 0; }
     select, button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; }
     button { cursor: pointer; }
     button:hover:not(:disabled), select:hover { border-color: var(--accent); }
+    button:focus-visible, select:focus-visible, input:focus-visible, #drop:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     button:disabled { opacity: .5; cursor: default; }
-    .primary { background: var(--accent); color: #11170a; border-color: var(--accent); font-weight: 600; }
+    .primary { padding: 10px 12px; background: var(--accent); color: #11170a; border-color: var(--accent); font-weight: 600; }
     .row { display: flex; gap: 8px; }
     .row > * { flex: 1; }
     .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
     .seg button { flex: 1; border: 0; border-radius: 0; background: transparent; }
     .seg button[aria-pressed="true"] { background: var(--line); color: var(--accent); }
     #drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 16px; text-align: center; color: var(--dim); cursor: pointer; }
-    #drop.over { border-color: var(--accent); color: var(--accent); }
-    .samples { display: flex; gap: 6px; flex-wrap: wrap; }
+    #drop:hover, #drop.over { border-color: var(--accent); color: var(--accent); }
+    .samples { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--dim); }
     .samples button { font-size: 12px; padding: 4px 8px; }
+    /* what is loaded now */
+    #current { display: grid; gap: 2px; padding: 10px 12px; border-radius: 8px; background: var(--raised); }
+    #curname { font: 12px/1.4 Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #cursum { font-size: 13px; color: var(--accent); }
+    #current details { font-size: 12px; color: var(--dim); }
+    #current summary { cursor: pointer; width: fit-content; }
+    #info { margin-top: 4px; font: 11px/1.5 Menlo, monospace; overflow-wrap: anywhere; }
     #stage { position: relative; display: grid; place-items: center; padding: 20px; min-height: 60vh; }
     /* (shown 720 wide whatever its pixel size, which follows the download's: demo.js) */
     #stage canvas { width: 720px; max-width: 100%; max-height: calc(100vh - 40px); object-fit: contain; display: block; }
     #msg { position: absolute; inset: auto 20px 20px 20px; text-align: center; color: var(--warn); }
+    #msg:empty { display: none; }
+    /* (with no picture to sit on, e.g. a photo with no scene found, it takes its place) */
+    #stage.empty #msg { position: static; }
     #msg code { color: var(--text); }
     #progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; display: none; }
     #progress div { height: 100%; width: 0; background: var(--accent); }
-    #status { font-size: 12px; color: var(--dim); min-height: 18px; }
+    #status { font-size: 12px; color: var(--dim); }
+    #status:empty { display: none; }
+    #status a { color: var(--accent); }
     #asciiopts { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
     [hidden] { display: none !important; }
     #asciiopts legend { padding: 0 4px; font-size: 12px; color: var(--accent); }
@@ -46,13 +65,16 @@
     .swatches button { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 8px; }
     .swatches button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
     .swatches i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--line); }
-    #status a { color: var(--accent); }
-    footer { margin-top: auto; font-size: 12px; color: var(--dim); }
-    footer a { color: var(--dim); }
+    footer { margin-top: auto; font-size: 12px; line-height: 1.45; color: var(--dim); }
+    /* dragging a file anywhere on the page */
+    #cover { position: fixed; inset: 0; z-index: 9; display: none; place-items: center; background: rgb(12 14 11 / .82); border: 2px dashed var(--accent); color: var(--accent); font-size: 18px; pointer-events: none; }
+    body.dragging #cover { display: grid; }
     @media (max-width: 760px) {
       main { grid-template-columns: 1fr; }
-      aside { border-right: 0; border-bottom: 1px solid var(--line); padding: 16px; }
-      #stage { padding: 16px; min-height: 50vh; }
+      aside { border-right: 0; border-top: 1px solid var(--line); padding: 16px; }
+      /* the picture first on a phone, the controls under it */
+      #stage { order: -1; padding: 12px 16px; min-height: 0; }
+      #stage canvas { max-height: 62vh; }
     }
   </style>
   <script type="importmap">
@@ -65,87 +87,110 @@
 <body>
   <main>
     <aside>
-      <h1>asciigraph<small data-t="tagline">Drop in a photo and it comes to life as a seamless loop; drop in a video and it plays in ASCII. Nothing leaves your browser.</small></h1>
-      <div id="drop" tabindex="0" role="button" data-t="drop">Drop a photo or video here, or click to choose one</div>
-      <input id="file" type="file" accept="image/*,video/*" hidden>
-      <div class="samples"><span data-t="or" style="font-size:12px;color:var(--dim);align-self:center">Or try:</span></div>
-      <label><span data-t="scene">Scene</span>
-        <select id="scene">
-          <option value="" data-t="auto">Guess from the photo</option>
-          <option value="water" data-t="water">Water, sea, river</option>
-          <option value="sky" data-t="sky">Sky and clouds</option>
-          <option value="grass" data-t="grass">Grass, fields</option>
-          <option value="waterfall" data-t="waterfall">Waterfall</option>
-          <option value="steam" data-t="steam">Steam, smoke, mist</option>
-          <option value="fire" data-t="fire">Fire, candles</option>
-          <option value="twinkle" data-t="twinkle">Stars, lights at night</option>
-        </select>
-      </label>
-      <label><span data-t="size">Size</span>
-        <select id="size">
-          <option value="" data-t="photo">The photo's own shape</option>
-          <option value="iphone">iPhone</option>
-          <option value="iphone-max">iPhone Pro Max / Plus</option>
-          <option value="android">Android</option>
-          <option value="ipad">iPad</option>
-          <option value="mac">Mac</option>
-          <option value="1080p">1080p</option>
-          <option value="1440p">1440p</option>
-          <option value="4k">4K</option>
-        </select>
-      </label>
-      <div class="seg" role="group">
-        <button id="m-ascii" aria-pressed="true">ASCII</button>
-        <button id="m-flow" aria-pressed="false" data-t="flowview">Photo</button>
-      </div>
-      <fieldset id="asciiopts">
-        <legend data-t="asciistyle">ASCII style</legend>
-        <div><span class="lbl" data-t="ink">Colour</span>
-          <div class="swatches" id="ink" role="group">
-            <button data-v="photo" aria-pressed="true"><i style="background:linear-gradient(135deg,#d9a35b,#3d8f86,#8fc0e8)"></i><span data-t="inkphoto">Photo</span></button>
-            <button data-v="green" aria-pressed="false"><i style="background:#59ff73"></i><span data-t="inkgreen">Green</span></button>
-            <button data-v="amber" aria-pressed="false"><i style="background:#ffb338"></i><span data-t="inkamber">Amber</span></button>
-            <button data-v="white" aria-pressed="false"><i style="background:#eef2f7"></i><span data-t="inkwhite">White</span></button>
-            <button data-v="paper" aria-pressed="false"><i style="background:#f2ede0;box-shadow:inset 0 0 0 3px #f2ede0,inset 0 0 0 6px #1a1c24"></i><span data-t="inkpaper">Ink on paper</span></button>
-          </div>
+      <header>
+        <h1>asciigraph</h1>
+        <p class="tagline" data-t="tagline">Drop in a photo and it comes to life as a seamless loop; drop in a video and it plays in ASCII. Nothing leaves your browser.</p>
+      </header>
+
+      <section class="step">
+        <h2><b>1</b><span data-t="step1">Pick a photo or video</span></h2>
+        <div id="drop" tabindex="0" role="button" data-t="drop">Drop a photo or video here, or click to choose one</div>
+        <input id="file" type="file" accept="image/*,video/*" hidden>
+        <div class="samples"><span data-t="or">Or try:</span></div>
+        <div id="current" hidden>
+          <span id="curname"></span>
+          <span id="cursum"></span>
+          <details><summary data-t="details">Details</summary><div id="info"></div></details>
         </div>
-        <label><span data-t="chars">Characters</span>
-          <select id="chars">
-            <option value="strokes" data-t="charsstrokes">Strokes that follow the motion</option>
-            <option value="classic" data-t="charsclassic">Classic ASCII  .:-=+*#@</option>
-            <option value="blocks" data-t="charsblocks">Shaded blocks ░▒▓█</option>
-            <option value="braille" data-t="charsbraille">Braille dots ⣿</option>
-            <option value="custom" data-t="charscustom">My own characters…</option>
+      </section>
+
+      <section class="step">
+        <h2><b>2</b><span data-t="step2">Choose the look</span></h2>
+        <label><span data-t="scene">Scene</span>
+          <select id="scene">
+            <option value="" data-t="auto">Guess from the photo</option>
+            <option value="water" data-t="water">Water, sea, river</option>
+            <option value="sky" data-t="sky">Sky and clouds</option>
+            <option value="grass" data-t="grass">Grass, fields</option>
+            <option value="waterfall" data-t="waterfall">Waterfall</option>
+            <option value="steam" data-t="steam">Steam, smoke, mist</option>
+            <option value="fire" data-t="fire">Fire, candles</option>
+            <option value="twinkle" data-t="twinkle">Stars, lights at night</option>
           </select>
         </label>
-        <label id="charsetrow" hidden><span data-t="charset">Characters to use (any order)</span>
-          <input id="charset" type="text" value=" .:-=+*#%@" spellcheck="false" maxlength="128">
-        </label>
-        <div class="row">
-          <div><span class="lbl" data-t="cell">Character size</span>
-            <div class="seg" id="cell" role="group">
-              <button data-v="1" aria-pressed="true">1×</button><button data-v="2" aria-pressed="false">2×</button><button data-v="3" aria-pressed="false">3×</button>
-            </div>
-          </div>
-          <div><span class="lbl" data-t="bg">Background</span>
-            <div class="seg" id="bg" role="group">
-              <button data-v="glow" aria-pressed="true" data-t="bgglow">Glow</button><button data-v="plain" aria-pressed="false" data-t="bgplain">Black</button>
-            </div>
+        <div><span class="lbl" id="viewlbl" data-t="view">Show it as</span>
+          <div class="seg" role="group" aria-labelledby="viewlbl">
+            <button id="m-ascii" aria-pressed="true">ASCII</button>
+            <button id="m-flow" aria-pressed="false" data-t="flowview">Picture</button>
           </div>
         </div>
-      </fieldset>
-      <div class="row">
+        <fieldset id="asciiopts">
+          <legend data-t="asciistyle">ASCII style</legend>
+          <div><span class="lbl" data-t="ink">Colour</span>
+            <div class="swatches" id="ink" role="group">
+              <button data-v="photo" aria-pressed="true"><i style="background:linear-gradient(135deg,#d9a35b,#3d8f86,#8fc0e8)"></i><span data-t="inkphoto">Photo</span></button>
+              <button data-v="green" aria-pressed="false"><i style="background:#59ff73"></i><span data-t="inkgreen">Green</span></button>
+              <button data-v="amber" aria-pressed="false"><i style="background:#ffb338"></i><span data-t="inkamber">Amber</span></button>
+              <button data-v="white" aria-pressed="false"><i style="background:#eef2f7"></i><span data-t="inkwhite">White</span></button>
+              <button data-v="paper" aria-pressed="false"><i style="background:#f2ede0;box-shadow:inset 0 0 0 3px #f2ede0,inset 0 0 0 6px #1a1c24"></i><span data-t="inkpaper">Ink on paper</span></button>
+            </div>
+          </div>
+          <label><span data-t="chars">Characters</span>
+            <select id="chars">
+              <option value="strokes" data-t="charsstrokes">Strokes that follow the motion</option>
+              <option value="classic" data-t="charsclassic">Classic ASCII  .:-=+*#@</option>
+              <option value="blocks" data-t="charsblocks">Shaded blocks ░▒▓█</option>
+              <option value="braille" data-t="charsbraille">Braille dots ⣿</option>
+              <option value="custom" data-t="charscustom">My own characters…</option>
+            </select>
+          </label>
+          <label id="charsetrow" hidden><span data-t="charset">Characters to use (any order)</span>
+            <input id="charset" type="text" value=" .:-=+*#%@" spellcheck="false" maxlength="128">
+          </label>
+          <div class="row">
+            <div><span class="lbl" data-t="cell">Character size</span>
+              <div class="seg" id="cell" role="group">
+                <button data-v="1" aria-pressed="true">1×</button><button data-v="2" aria-pressed="false">2×</button><button data-v="3" aria-pressed="false">3×</button>
+              </div>
+            </div>
+            <div><span class="lbl" data-t="bg">Background</span>
+              <div class="seg" id="bg" role="group">
+                <button data-v="glow" aria-pressed="true" data-t="bgglow">Glow</button><button data-v="plain" aria-pressed="false" data-t="bgplain">Black</button>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+      </section>
+
+      <section class="step">
+        <h2><b>3</b><span data-t="step3">Download</span></h2>
+        <label><span data-t="size">Size</span>
+          <select id="size">
+            <option value="" data-t="photo">The photo's own shape</option>
+            <option value="iphone">iPhone</option>
+            <option value="iphone-max">iPhone Pro Max / Plus</option>
+            <option value="android">Android</option>
+            <option value="ipad">iPad</option>
+            <option value="mac">Mac</option>
+            <option value="1080p">1080p</option>
+            <option value="1440p">1440p</option>
+            <option value="4k">4K</option>
+          </select>
+        </label>
         <button id="sound" aria-pressed="false" data-t="soundoff">Sound: off</button>
-      </div>
-      <button id="export" class="primary" disabled data-t="export">Download MP4</button>
-      <div id="progress"><div></div></div>
-      <div id="status"></div>
-      <footer data-t="footer">Photos: loops are 12 seconds and repeat with no visible seam; the download follows the size you picked, and a 4K loop takes a few minutes. Videos: up to 60 seconds, with their own sound if you like.</footer>
+        <p class="hint" data-t="soundhint">With the sound on, the download has it too.</p>
+        <button id="export" class="primary" disabled data-t="export">Download MP4</button>
+        <div id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div></div></div>
+        <div id="status" role="status"></div>
+      </section>
+
+      <footer data-t="footer">Photo loops are 12 seconds and repeat with no visible seam; a 4K one takes a few minutes. Videos are downloaded up to 60 seconds.</footer>
     </aside>
-    <section id="stage">
+    <section id="stage" class="empty">
       <div id="msg"></div>
     </section>
   </main>
+  <div id="cover" data-t="cover">Let go to open it</div>
   <script type="module" src="./src/demo.js"></script>
 </body>
 </html>
