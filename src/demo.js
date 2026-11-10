@@ -33,6 +33,16 @@ const ZH = {
   err_noduration: '这段视频没有标明时长，处理不了。可以先另存为 MP4 再试。',
   err_videostopped: '视频读到一半停了，请再试一次。',
   making: '正在生成', encoding: (d, n) => `正在编码 ${d}/${n}`, saved: '已生成：', noEncode: '这个浏览器不能直接导出视频，请用新版 Chrome、Edge 或 Safari。',
+  galtitle: '能做出什么', galsub: '这些循环都是用 asciigraph 做的。标着 ASCII 的是字符画，其余是照片本身在动。把你自己的照片放进上面的工具，就能做一段。',
+  seegallery: '看看能做出什么 ↓', moving: '动态照片', galpause: '暂停动画', galplay: '播放动画',
+  faqtitle: '常见问题',
+  q1: '照片会上传到哪里吗？', a1: '不会。整个过程都在你的浏览器里完成，照片、视频、动画和下载的 MP4 都不会离开你的设备。',
+  q2: '什么样的照片效果最好？', a2: '水面、天空、草地、瀑布、蒸汽、火焰、星空或夜景灯光占画面大部分的照片。如果认不出画面里是什么，可以自己选场景。',
+  q3: '支持哪些文件？', a3: '浏览器能打开的照片都可以，比如 JPG、PNG、WebP。MP4、MOV、WebM 等视频也能写成 ASCII，最长可下载 60 秒。',
+  q4: '下载要多久？', a4: '照片原比例的循环（横图宽 1440，竖图宽 1080）一般几秒到一分钟以内；4K 可能要几分钟，期间请保持页面打开。',
+  q5: '手机能用吗？', a5: '能，手机上可以预览。下载 MP4 需要能编码视频的新版浏览器，比如 Chrome、Edge 或 Safari。',
+  q6: '为什么循环接头处看不出跳动？', a6: '循环里的每一种运动（浪涌、漂流、闪烁）都正好转整数圈，所以最后一帧能直接接回第一帧。',
+  sitefoot: 'asciigraph · 全部在你的浏览器里运行',
   look: '样式', pphoto: '原色', pterminal: '终端', pink: '墨迹', pdots: '点阵', finetune: '细调字符', ink: '颜色', inkphoto: '照片原色', inkgreen: '绿色荧光', inkamber: '琥珀色', inkwhite: '白色', inkpaper: '白底黑字',
   chars: '字符', charsstrokes: '顺着运动方向的笔画', charsclassic: '经典 ASCII  .:-=+*#@', charsblocks: '明暗方块 ░▒▓█', charsbraille: '盲文点阵 ⣿', charscustom: '自定义字符…',
   charset: '用哪些字符（顺序随意）', cell: '字符大小', bg: '背景', bgglow: '底光', bgplain: '纯黑',
@@ -260,6 +270,58 @@ for (const s of SAMPLES) {
   samples.append(b);
 }
 for (const id of ['scene', 'size']) $(id).onchange = rebuild;
+
+// what it makes: loops that load and play only while they are on screen, and
+// not at all under reduced motion or while the visitor has paused them
+const GALLERY = [
+  { id: 'coast', ascii: true, en: ['Coast', 'Waves roll in; the cliff stays still.'], zh: ['海岸', '浪往岸上涌，悬崖不动。'] },
+  { id: 'clouds', ascii: true, en: ['Clouds', 'Nothing but sky, drifting.'], zh: ['云', '整片天空在缓缓飘。'] },
+  { id: 'rice', ascii: true, en: ['Rice field', 'The whole field bends in the wind.'], zh: ['稻田', '整片稻子随风起伏。'] },
+  { id: 'surf', en: ['Surf', 'Foam runs up the sand and slides back.'], zh: ['浪花', '白沫冲上沙滩，又退回去。'] },
+  { id: 'waterfall', en: ['Waterfall', 'The water falls and the pool ripples; the rock stays.'], zh: ['瀑布', '水往下落，潭面起涟漪，岩石不动。'] },
+  { id: 'campfire', en: ['Campfire', 'Flames rise and break off; the logs stay put.'], zh: ['篝火', '火苗往上窜、断开，木柴不动。'] },
+  { id: 'stars', en: ['Starry sky', 'The brightest stars flare the most.'], zh: ['星空', '越亮的星闪得越明显。'] },
+  { id: 'steam', en: ['Steam', 'It rises along its own curls.'], zh: ['蒸汽', '顺着自己的卷曲往上升。'] },
+];
+const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const onScreen = new Set();
+let galPaused = false;
+const playIt = (v) => { if (!stillMotion.matches && !document.hidden && !galPaused) v.play().catch(() => {}); };
+const shown = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    const v = e.target;
+    if (e.isIntersecting) {
+      if (!v.src) { v.poster = v.dataset.poster; v.src = v.dataset.src; }
+      onScreen.add(v); playIt(v);
+    } else { onScreen.delete(v); v.pause(); }
+  }
+}, { rootMargin: '200px' });
+// (a page opened in a background tab starts them when it is looked at, and a
+// change to reduced motion stops or starts them)
+const replay = () => { for (const v of onScreen) if (stillMotion.matches || galPaused) v.pause(); else playIt(v); };
+const setPauseLabel = () => {
+  $('galpause').setAttribute('aria-pressed', String(galPaused));
+  $('galpause').textContent = galPaused ? say('galplay', 'Play the loops') : say('galpause', 'Pause the loops');
+};
+$('galpause').onclick = () => { galPaused = !galPaused; setPauseLabel(); replay(); };
+document.addEventListener('visibilitychange', replay);
+stillMotion.addEventListener('change', replay);
+for (const g of GALLERY) {
+  const [title, line] = zh ? g.zh : g.en, base = `examples/gallery/${g.id}`;
+  const fig = document.createElement('figure');
+  fig.className = 'card';
+  const v = Object.assign(document.createElement('video'), { muted: true, loop: true, playsInline: true, preload: 'none' });
+  Object.assign(v.dataset, { src: `${base}.mp4`, poster: `${base}.jpg` });
+  v.setAttribute('aria-hidden', 'true');   // (the caption says what it shows)
+  const cap = document.createElement('figcaption');
+  const b = document.createElement('b'), tag = document.createElement('i'), sub = document.createElement('span');
+  b.textContent = title; tag.className = 'tag'; tag.textContent = g.ascii ? 'ASCII' : say('moving', 'Moving photo'); b.append(tag);
+  sub.textContent = line;
+  cap.append(b, sub);
+  fig.append(v, cap);
+  $('galgrid').append(fig);
+  shown.observe(v);
+}
 // the guess was wrong: straight to the Scene list
 $('rescene').onclick = () => { $('scene').focus(); try { $('scene').showPicker(); } catch { /* (not every browser opens it from a click) */ } };
 for (const id of ['amp', 'loop', 'focus']) {
