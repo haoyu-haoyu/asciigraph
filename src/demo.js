@@ -33,7 +33,7 @@ const ZH = {
   err_noduration: '这段视频没有标明时长，处理不了。可以先另存为 MP4 再试。',
   err_videostopped: '视频读到一半停了，请再试一次。',
   making: '正在生成', encoding: (d, n) => `正在编码 ${d}/${n}`, saved: '已生成：', noEncode: '这个浏览器不能直接导出视频，请用新版 Chrome、Edge 或 Safari。',
-  asciistyle: 'ASCII 样式', ink: '颜色', inkphoto: '照片原色', inkgreen: '绿色荧光', inkamber: '琥珀色', inkwhite: '白色', inkpaper: '白底黑字',
+  look: '样式', pphoto: '原色', pterminal: '终端', pink: '墨迹', pdots: '点阵', finetune: '细调字符', ink: '颜色', inkphoto: '照片原色', inkgreen: '绿色荧光', inkamber: '琥珀色', inkwhite: '白色', inkpaper: '白底黑字',
   chars: '字符', charsstrokes: '顺着运动方向的笔画', charsclassic: '经典 ASCII  .:-=+*#@', charsblocks: '明暗方块 ░▒▓█', charsbraille: '盲文点阵 ⣿', charscustom: '自定义字符…',
   charset: '用哪些字符（顺序随意）', cell: '字符大小', bg: '背景', bgglow: '底光', bgplain: '纯黑',
   loadFail: '这张图片打不开。', videoFail: '这个视频打不开，换成 MP4 试试。', clipsoundoff: '原声：关', soundTooBig: '（没有声音：文件太大或太长，读不了它的声音）', clipsoundon: '原声：开', soundNote: '（含声音）',
@@ -122,9 +122,10 @@ function rebuild() {
     start = performance.now();
     $('export').disabled = busy || !canEncode();
     showCurrent();
+    scheduleThumbs();
     if (!busy) status.textContent = canEncode() ? '' : say('noEncode', "This browser can't make video files: try a recent Chrome, Edge or Safari.");
   } catch (e) {
-    living = null; canvas.remove(); stage.classList.add('empty');
+    living = null; canvas.remove(); stage.classList.add('empty'); clearThumbs();
     $('current').hidden = true;
     $('export').textContent = say('export', 'Download MP4');
     clip?.video.pause();
@@ -277,32 +278,89 @@ for (const m of ['ascii', 'flow']) {
     mode = m;
     for (const n of ['ascii', 'flow']) $(`m-${n}`).setAttribute('aria-pressed', String(n === m));
     $('asciiopts').hidden = m !== 'ascii';
+    if (m === 'ascii') scheduleThumbs();
   };
 }
 
 // the ASCII style: the colour and background change at once, the cells and
 // characters rebuild only the ASCII layer, not the scene
+// four looks, each a whole style (the fine controls below can still change any one part)
+const PRESETS = {
+  photo: { ink: 'photo', chars: 'strokes', bg: 'glow' },
+  terminal: { ink: 'green', chars: 'classic', bg: 'plain' },
+  ink: { ink: 'paper', chars: 'blocks', bg: 'glow' },     // (paper is its own background)
+  dots: { ink: 'white', chars: 'braille', bg: 'plain' },
+};
+const presetOf = (s) => Object.keys(PRESETS).find((k) => {
+  const p = PRESETS[k];
+  return p.ink === s.ink && p.chars === s.chars && (s.ink === 'paper' || p.bg === s.bg);
+}) ?? null;
+// every control shows the style as it is, whichever control changed it
+function syncControls() {
+  for (const id of ['ink', 'cell', 'bg']) for (const o of $(id).children) o.setAttribute('aria-pressed', String(o.dataset.v === style[id]));
+  $('chars').value = style.chars;
+  const k = presetOf(style);
+  for (const b of $('presets').children) b.setAttribute('aria-pressed', String(b.dataset.p === k));
+}
+// each look's thumbnail: this moment of this picture drawn in that look, copied
+// off the preview (which keeps its drawing buffer), a small square from the
+// middle at about its own size, so the characters themselves show.
+// Each look rebuilds the ASCII layer (a new glyph atlas and shaders), so it is
+// done only when what the thumbnails show has changed, and only in the ASCII view.
+let thumbsTimer = 0, thumbsKey = null;
+const thumbKey = () => [name, clip ? 'video' : $('scene').value, $('size').value, more.focus, applied.cell].join('|');
+function drawThumbs() {
+  const cv = stage.querySelector('canvas');
+  if (!living || !cv?.width) return;
+  if (mode !== 'ascii') { thumbsKey = null; return; }        // (drawn when the ASCII view comes back)
+  const key = thumbKey();
+  if (key === thumbsKey) return;
+  const keep = { ...applied }, frame = Math.floor(performance.now() / 33), at = phase();
+  const paint = (m) => (living.video ? living.draw(m, frame) : living.draw(at, m, frame));
+  // (the look in use goes last, so putting it back costs no rebuild)
+  const order = [...$('presets').children].sort((a, b) => (a.dataset.p === presetOf(keep)) - (b.dataset.p === presetOf(keep)));
+  try {
+    for (const b of order) {
+      living.setAscii({ ...keep, ...PRESETS[b.dataset.p], charset: '' });
+      paint('ascii');
+      const t = b.querySelector('canvas'), g = t.getContext('2d');
+      const s = Math.min(cv.width, cv.height, 96 * Number(keep.cell || 1));
+      g.imageSmoothingEnabled = false;
+      g.drawImage(cv, Math.round((cv.width - s) / 2), Math.round((cv.height - s) / 2), s, s, 0, 0, t.width, t.height);
+    }
+    thumbsKey = key;
+  } catch (e) {
+    console.error(e);
+  } finally {
+    living.setAscii(keep);
+    paint(mode);
+  }
+}
+// (a video's first moments are often dark or fading in: its thumbnails wait a little longer)
+const scheduleThumbs = () => { clearTimeout(thumbsTimer); thumbsTimer = setTimeout(drawThumbs, clip ? 1500 : 400); };
+const clearThumbs = () => { thumbsKey = null; for (const t of $('presets').querySelectorAll('canvas')) t.getContext('2d').clearRect(0, 0, t.width, t.height); };
+
 function restyle() {
+  const cellWas = applied.cell;
+  syncControls();
   $('charsetrow').hidden = style.chars !== 'custom';
   for (const b of $('bg').children) b.disabled = style.ink === 'paper';   // (paper is its own background)
   try {
     if (living) living.setAscii(style); else asciiStyle(new URLSearchParams(style));   // (checked even before there is a photo)
     applied = { ...style };
+    if (living && cellWas !== style.cell) scheduleThumbs();   // (the looks are shown at this character size)
     // (a photo that made nothing tries again, which puts back its own error and scenes to pick)
     if (living || !photo) msg.textContent = ''; else rebuild();
   } catch (e) {
+    // the controls go back to the style the picture still has; only a custom
+    // character set being typed stays, so it can be finished
+    Object.assign(style, applied, style.chars === 'custom' ? { chars: 'custom', charset: style.charset } : {});
+    syncControls();
     showError(e);
   }
 }
-for (const id of ['ink', 'cell', 'bg']) {
-  for (const b of $(id).children) {
-    b.onclick = () => {
-      style[id] = b.dataset.v;
-      for (const o of $(id).children) o.setAttribute('aria-pressed', String(o === b));
-      restyle();
-    };
-  }
-}
+for (const id of ['ink', 'cell', 'bg']) for (const b of $(id).children) b.onclick = () => { style[id] = b.dataset.v; restyle(); };
+for (const b of $('presets').children) b.onclick = () => { Object.assign(style, PRESETS[b.dataset.p], { charset: '' }); restyle(); };
 $('chars').onchange = () => {
   style.chars = $('chars').value;
   style.charset = style.chars === 'custom' ? $('charset').value : '';
